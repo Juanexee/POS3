@@ -1,0 +1,19 @@
+# --- Carpetas de Compilación (Binarios) ---
+# El asterisco le dice a Git que busque en todas las subcarpetas
+**/bin/
+**/obj/
+
+# --- Archivos de Visual Studio ---
+.vs/
+*.user
+*.suo
+*.sln.docstates
+
+# --- Archivos de Base de Datos locales (Opcional) ---
+# Si usas SQL Express local y no quieres subir el archivo pesado
+*.mdf
+*.ldf
+
+# --- Configuración de entorno ---
+# Evita subir secretos de tu API en desarrollo
+appsettings.Development.json
