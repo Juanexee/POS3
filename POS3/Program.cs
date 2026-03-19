@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using DATOS;
 using NEGOCIO;
+using Microsoft.Extensions.Options;
 namespace API_REST_V3
 
 {
@@ -21,29 +22,38 @@ namespace API_REST_V3
         {
 
             var builder = WebApplication.CreateBuilder(args);
-            // Validar la cadena de conexiÛn antes
+            // Validar la cadena de conexi√≥n antes
             var connectionString = builder.Configuration.GetConnectionString("RestauranteDB");
             if (string.IsNullOrWhiteSpace(connectionString))
                 throw new InvalidOperationException("Server=WINDOWS-TUTGG56\\KEVINLARA;Database=RestauranteDB;User Id=sa;Password=An1w0;Trusted_Connection=True;TrustServerCertificate=True");
 
             // -----------------------
-            // Bindear configuraciÛn Jwt a POCO y validarla
+            // Bindear configuraci√≥n Jwt a POCO y validarla
             // -----------------------
             builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
             builder.Services.AddScoped<IVentaDatos>(provider => new VentaDatos(connectionString));
             builder.Services.AddScoped<InsumoDatos>(s => new InsumoDatos(connectionString));
             builder.Services.AddScoped<CompraDatos>(s => new CompraDatos(connectionString));
             builder.Services.AddScoped<UnidadMedidaDatos>(s => new UnidadMedidaDatos(connectionString));
+               builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("PermitirFrontend", policy =>
+                {
+                    policy.WithOrigins("http://127.0.0.1:5500", "http://localhost:5500") // Puerto de VS Code Live Server
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
 
             // Opcional: obtener una instancia inmediata para validar claves ahora
             var jwtSection = builder.Configuration.GetSection("Jwt");
             var jwtSettings = jwtSection.Get<JwtSettings>();
 
             if (jwtSettings == null)
-                throw new InvalidOperationException("Se requiere la secciÛn 'Jwt' en appsettings.json.");
+                throw new InvalidOperationException("Se requiere la secci√≥n 'Jwt' en appsettings.json.");
 
             if (string.IsNullOrWhiteSpace(jwtSettings.Key))
-                throw new InvalidOperationException("La clave 'Jwt:Key' no est· configurada. Revisa appsettings.json y que estÈ copiado al output.");
+                throw new InvalidOperationException("La clave 'Jwt:Key' no est√° configurada. Revisa appsettings.json y que est√© copiado al output.");
 
             // -----------------------
             // Servicios
@@ -54,8 +64,10 @@ namespace API_REST_V3
             builder.Services.AddScoped<CompraNegocio>();
             builder.Services.AddScoped<UnidadMedidaNegocio>();
 
+            
 
-            // ConfiguraciÛn de autenticaciÛn JWT
+
+            // Configuraci√≥n de autenticaci√≥n JWT
             // -----------------------
             builder.Services.AddAuthentication(options =>
             {
@@ -79,7 +91,7 @@ namespace API_REST_V3
                 {
                     OnAuthenticationFailed = ctx =>
                     {
-                        Console.WriteLine("Error de autenticaciÛn JWT: " + ctx.Exception?.Message);
+                        Console.WriteLine("Error de autenticaci√≥n JWT: " + ctx.Exception?.Message);
                         return Task.CompletedTask;
                     },
                     OnTokenValidated = ctx =>
@@ -134,7 +146,7 @@ namespace API_REST_V3
 
                 //-=======================documentacion
 
-                //=== documentaciÛn XML y anotaciones===
+                //=== documentaci√≥n XML y anotaciones===
 
                 var xmlfile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlpath = Path.Combine(AppContext.BaseDirectory, xmlfile);
@@ -159,13 +171,19 @@ namespace API_REST_V3
             // -----------------------
             // Build y middlewares
             // -----------------------
-            var app = builder.Build();
+            
+         
+
+            var app = builder.Build(); 
+
+
 
             app.UseSwagger();
             app.UseSwaggerUI();
-
+            app.UseCors("PermitirFrontend");
             app.UseAuthentication();
             app.UseAuthorization();
+            
 
             app.MapControllers();
 
