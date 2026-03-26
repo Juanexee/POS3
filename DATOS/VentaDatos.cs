@@ -40,6 +40,10 @@ namespace DATOS
                     cmd.Parameters.AddWithValue("@usuarioID", venta.UsuarioID);
                     cmd.Parameters.AddWithValue("@total", venta.Total);
 
+                    //NUEVOS PARÁMETROS 
+                    cmd.Parameters.AddWithValue("@sesionID", (object)venta.SesionID ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@esPagoFinal", venta.EsPagoFinal);
+
                     ventaID = Convert.ToInt32(cmd.ExecuteScalar()); // SCOPE_IDENTITY es decimal/numeric, se convierte
                 }
                 venta.VentaID = ventaID;
@@ -168,8 +172,7 @@ namespace DATOS
 
         public int RegistrarVenta(VentaListaDTO venta)
         {
-            // Implementación mínima para cumplir con la interfaz.
-            // Puedes ajustar la lógica según tus necesidades reales.
+            
             throw new NotImplementedException("RegistrarVenta aún no está implementado.");
         }
 

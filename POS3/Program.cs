@@ -32,6 +32,10 @@ namespace API_REST_V3
             builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
             builder.Services.AddScoped<IVentaDatos>(provider => new VentaDatos(connectionString));
             builder.Services.AddScoped<InsumoDatos>(s => new InsumoDatos(connectionString));
+            // Registrar Sesiones
+            builder.Services.AddScoped<SesionDatos>(s => new SesionDatos(connectionString));
+            builder.Services.AddScoped<SesionNegocio>();
+            builder.Services.AddScoped<VentaNegocio>();
             builder.Services.AddScoped<CompraDatos>(s => new CompraDatos(connectionString));
             builder.Services.AddScoped<UnidadMedidaDatos>(s => new UnidadMedidaDatos(connectionString));
 
@@ -48,11 +52,13 @@ namespace API_REST_V3
             // -----------------------
             // Servicios
             // -----------------------
-            builder.Services.AddControllers();
             builder.Services.AddScoped<VentaNegocio>();
+            builder.Services.AddScoped<SesionNegocio>(); 
             builder.Services.AddScoped<InsumoNegocio>();
             builder.Services.AddScoped<CompraNegocio>();
             builder.Services.AddScoped<UnidadMedidaNegocio>();
+
+            builder.Services.AddControllers();
 
 
             // Configuración de autenticación JWT

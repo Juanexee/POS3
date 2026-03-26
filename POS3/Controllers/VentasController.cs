@@ -20,6 +20,7 @@ namespace POS4.Controllers
         }
         /// <summary> Insertar venta con sus detalles (transaccion).</summary>
         [HttpPost]
+        [Route("registrar")]
         public IActionResult RegistrarVenta([FromBody] Venta venta)
         {
             if (!ModelState.IsValid)
@@ -32,9 +33,15 @@ namespace POS4.Controllers
             {
                 // Llamada a la Capa de Negocio para iniciar la transacción en la BD
                 int ventaID = _ventaNegocio.RegistrarVenta(venta);
+                int idGenerado = _ventaNegocio.RegistrarVenta(venta);
 
-                // Si es exitoso, devuelve el ID de la nueva venta con un código 201 Created
-                return CreatedAtAction(nameof(RegistrarVenta), new { id = ventaID }, venta);
+              
+                return Ok(new
+                {
+                    success = true,
+                    message = "Venta registrada con éxito",
+                    ventaID = idGenerado
+                });
             }
             catch (ArgumentException argEx)
             {

@@ -13,10 +13,14 @@ namespace NEGOCIO
     public class VentaNegocio
     {
         private readonly IVentaDatos _ventaDatos; // Cambia el campo a la interfaz
+        private readonly SesionDatos _sesionDatos; // Para validar sesiones en pedidos por QR
+        private readonly PlatillosDatos _platilloDatos;
 
-        public VentaNegocio(IVentaDatos ventaDatos) // Cambia el parámetro a la interfaz
+        public VentaNegocio(IVentaDatos ventaDatos, SesionDatos sesionDatos) // Cambia el parámetro a la interfaz
         {
             _ventaDatos = ventaDatos;
+            _sesionDatos = sesionDatos;
+            _platilloDatos = platilloDatos;
         }
 
 
@@ -26,21 +30,25 @@ namespace NEGOCIO
             // --- 1. VALIDACIONES DE LA CABECERA (REQUERIMIENTOS BÁSICOS) ---
 
             // Validar Mesero/Cajero (UsuarioID)
-            if (venta.UsuarioID <= 0)
-            {
-                throw new ArgumentException("El ID de Usuario (Mesero/Cajero) es obligatorio.");
-            }
+            // 1. Validaciones que aplican a TODOS (Mesa y Platillos)
+            if (venta.MesaID <= 0) throw new ArgumentException("El ID de la Mesa es obligatorio.");
+            if (venta.DetalleVenta == null || !venta.DetalleVenta.Any()) throw new ArgumentException("Debe haber al menos un platillo.");
 
-            // Validar Mesa
-            if (venta.MesaID <= 0)
+            // 2. Validaciones condicionales según el origen
+            if (venta.TipoPedido == "QR")
             {
-                throw new ArgumentException("El ID de la Mesa es obligatorio.");
-            }
+                // Reglas para QR
+                if (venta.SesionID == null || venta.SesionID <= 0)
+                    throw new ArgumentException("Sesión inválida para pedido QR.");
 
-            // Validar que la venta contenga al menos un platillo
-            if (venta.DetalleVenta == null || !venta.DetalleVenta.Any())
+                if (!_sesionDatos.ValidarSesionActiva(venta.SesionID.Value))
+                    throw new Exception("La sesión no está activa.");
+            }
+            else
             {
-                throw new ArgumentException("La venta debe contener al menos un platillo.");
+                // Reglas para Mesero/Caja (No es QR)
+                if (venta.UsuarioID <= 0)
+                    throw new ArgumentException("El ID de Usuario es obligatorio para pedidos presenciales.");
             }
 
             // --- 2. VALIDACIONES DEL DETALLE (POR CADA PLATILLO) ---
@@ -63,6 +71,28 @@ namespace NEGOCIO
                 if (detalle.PrecioUnitario <= 0)
                 {
                     throw new ArgumentException($"El Precio Unitario para el Platillo ID {detalle.PlatilloID} debe ser mayor que cero.");
+                }
+
+                //después de que la base de datos confirme que la venta fue exitosa, llamaríamos al método de cierre.
+
+                try
+                {
+                    // 1. Grabamos la venta en la BD
+                    int ventaID = _ventaDatos.Insertar(venta);
+
+                    // 2. Si la venta pertenece a una sesión, la cerramos automáticamente
+                    //¿Es el cierre de la cuenta?
+                    if (venta.SesionID.HasValue && venta.SesionID > 0)
+                    {
+                        _sesionDatos.FinalizarSesion(venta.SesionID.Value);
+                    }
+
+                    return ventaID;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error al procesar la venta: {ex.Message}");
+                    throw;
                 }
             }
 
@@ -97,6 +127,7 @@ namespace NEGOCIO
                 Console.WriteLine($"Error de Negocio al registrar venta: {ex.Message}");
                 throw;
             }
+
         }
 
         // Método para leer la venta (correctamente adaptado)
