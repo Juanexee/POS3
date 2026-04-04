@@ -19,42 +19,37 @@ namespace POS4.Controllers
             _ventaNegocio = ventaNegocio;
         }
         /// <summary> Insertar venta con sus detalles (transaccion).</summary>
-        [HttpPost]
-        [Route("registrar")]
+        [HttpPost("registrar")]
         public IActionResult RegistrarVenta([FromBody] Venta venta)
         {
-            if (!ModelState.IsValid)
-            {
-                // Validación básica de los DTOs antes de tocar la BLL
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             try
             {
-                // Llamada a la Capa de Negocio para iniciar la transacción en la BD
-                int ventaID = _ventaNegocio.RegistrarVenta(venta);
-                int idGenerado = _ventaNegocio.RegistrarVenta(venta);
+                // 1. Ejecutamos la lógica de negocio
+                // 'respuesta' es de tipo RespuestaRegistroVenta
+                var respuesta = _ventaNegocio.RegistrarVenta(venta);
 
-              
-                return Ok(new
-                {
-                    success = true,
-                    message = "Venta registrada con éxito",
-                    ventaID = idGenerado
-                });
+                // 2. Retornamos el objeto completo que generó la capa de Negocio
+                // Esto ya incluye success, el ID, el total y el mensaje correcto.
+                return Ok(respuesta);
+
             }
             catch (ArgumentException argEx)
             {
-                // Maneja errores de validación de negocio (ej. "La venta debe contener al menos un producto.")
-                return BadRequest(new { message = argEx.Message });
+                // Errores de validación (Ej: "Mesa no válida" o "Sesión inactiva")
+                return BadRequest(new { success = false, message = argEx.Message });
             }
             catch (Exception ex)
             {
-                // Este bloque captura cualquier error no controlado,
-                // incluyendo el error de "Stock Insuficiente" que se lanzó desde la Capa de Datos.
-
-                // El error 500 Internal Server Error es apropiado para un fallo transaccional.
-                return StatusCode(500, new { message = "Error interno del servidor al registrar la venta. La transacción fue revertida.", detail = ex.Message });
+                // Errores críticos o de base de datos (Ej: "Stock insuficiente")
+                // Es vital enviar el mensaje para que el usuario sepa qué falló
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "No se pudo procesar el pedido.",
+                    detail = ex.Message
+                });
             }
         }
 

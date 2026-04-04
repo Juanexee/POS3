@@ -81,17 +81,22 @@ namespace DATOS
         }
 
         //METODO FINALIZAR SESION, ESTE METODO SERVIRA PARA QUE CUANDO EL CLIENTE PAGUE LA SESION SEA FINALIZADA 
-        
+
 
         public bool FinalizarSesion(int sesionId)
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
-                // Actualizamos el estado y la fecha de finalización
-                string query = @"UPDATE SesionMesa 
-                         SET estado = 'Finalizada', 
-                             fecha_fin = GETDATE() 
-                         WHERE sesionID = @sesionId";
+                // 1. Cerramos la sesión 📱
+                // 2. Buscamos el mesaID de esa sesión y ponemos la mesa como 'Disponible' 🟢
+                string query = @"
+            UPDATE SesionMesa 
+            SET estado = 'Finalizada', fecha_fin = GETDATE() 
+            WHERE sesionID = @sesionId;
+
+            UPDATE Mesas 
+            SET estado = 'Disponible' 
+            WHERE mesaID = (SELECT mesaID FROM SesionMesa WHERE sesionID = @sesionId);";
 
                 var comando = new SqlCommand(query, conexion);
                 comando.Parameters.AddWithValue("@sesionId", sesionId);
@@ -99,7 +104,6 @@ namespace DATOS
                 conexion.Open();
                 int filasAfectadas = comando.ExecuteNonQuery();
 
-                // Si filasAfectadas > 0, significa que se encontró y actualizó la sesión
                 return filasAfectadas > 0;
             }
         }

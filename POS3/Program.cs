@@ -36,8 +36,17 @@ namespace API_REST_V3
             builder.Services.AddScoped<SesionDatos>(s => new SesionDatos(connectionString));
             builder.Services.AddScoped<SesionNegocio>();
             builder.Services.AddScoped<VentaNegocio>();
+            builder.Services.AddScoped<IVentaNegocio, VentaNegocio>(s =>
+                 new VentaNegocio(
+                   s.GetRequiredService<IVentaDatos>(),
+                   s.GetRequiredService<SesionDatos>(),
+                   s.GetRequiredService<PlatillosDatos>()
+                 )
+             );
             builder.Services.AddScoped<CompraDatos>(s => new CompraDatos(connectionString));
             builder.Services.AddScoped<UnidadMedidaDatos>(s => new UnidadMedidaDatos(connectionString));
+            builder.Services.AddScoped<PlatillosDatos>(s => new PlatillosDatos(connectionString));
+            builder.Services.AddScoped<IPlatillosDatos, PlatillosDatos>(s => new PlatillosDatos(connectionString));
 
             // Opcional: obtener una instancia inmediata para validar claves ahora
             var jwtSection = builder.Configuration.GetSection("Jwt");

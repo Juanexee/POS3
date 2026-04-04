@@ -7,16 +7,15 @@ using ENTIDADES;
 using DATOS;
 using static ENTIDADES.UsuarioDTO;
 
-
 namespace NEGOCIO
 {
-    public class VentaNegocio
+    public class VentaNegocio : IVentaNegocio
     {
         private readonly IVentaDatos _ventaDatos; // Cambia el campo a la interfaz
         private readonly SesionDatos _sesionDatos; // Para validar sesiones en pedidos por QR
         private readonly PlatillosDatos _platilloDatos;
-
-        public VentaNegocio(IVentaDatos ventaDatos, SesionDatos sesionDatos) // Cambia el parámetro a la interfaz
+       
+        public VentaNegocio(IVentaDatos ventaDatos, SesionDatos sesionDatos, PlatillosDatos platilloDatos) // Agrega el parámetro faltante
         {
             _ventaDatos = ventaDatos;
             _sesionDatos = sesionDatos;
@@ -25,19 +24,14 @@ namespace NEGOCIO
 
 
         // Metodo para registrar venta
-        public int RegistrarVenta(Venta venta)
+        public RespuestaRegistroVenta RegistrarVenta(Venta venta)
         {
-            // --- 1. VALIDACIONES DE LA CABECERA (REQUERIMIENTOS BÁSICOS) ---
-
-            // Validar Mesero/Cajero (UsuarioID)
-            // 1. Validaciones que aplican a TODOS (Mesa y Platillos)
+            // --- 1. VALIDACIONES DE CABECERA --- (Se mantienen igual)
             if (venta.MesaID <= 0) throw new ArgumentException("El ID de la Mesa es obligatorio.");
             if (venta.DetalleVenta == null || !venta.DetalleVenta.Any()) throw new ArgumentException("Debe haber al menos un platillo.");
 
-            // 2. Validaciones condicionales según el origen
             if (venta.TipoPedido == "QR")
             {
-                // Reglas para QR
                 if (venta.SesionID == null || venta.SesionID <= 0)
                     throw new ArgumentException("Sesión inválida para pedido QR.");
 
@@ -46,89 +40,53 @@ namespace NEGOCIO
             }
             else
             {
-                // Reglas para Mesero/Caja (No es QR)
                 if (venta.UsuarioID <= 0)
                     throw new ArgumentException("El ID de Usuario es obligatorio para pedidos presenciales.");
             }
 
-            // --- 2. VALIDACIONES DEL DETALLE (POR CADA PLATILLO) ---
+            // --- 2. VALIDACIÓN DE DETALLES Y PRECIOS --- (Se mantienen igual)
+            decimal totalCalculado = 0;
             foreach (var detalle in venta.DetalleVenta)
             {
-                // Validar Platillo ID
-                if (detalle.PlatilloID <= 0)
-                {
-                    // Adaptado de ProductoID a PlatilloID
-                    throw new ArgumentException("El ID del platillo es obligatorio y debe ser un valor positivo.");
-                }
+                var platilloInfo = _platilloDatos.LeerPorId(detalle.PlatilloID);
+                if (platilloInfo == null)
+                    throw new Exception($"El platillo ID {detalle.PlatilloID} no existe.");
 
-                // Validar Cantidad
-                if (detalle.Cantidad <= 0)
-                {
-                    throw new ArgumentException($"La cantidad para el Platillo ID {detalle.PlatilloID} debe ser mayor que cero.");
-                }
-
-                // Validar Precio Unitario (Precio > 0)
-                if (detalle.PrecioUnitario <= 0)
-                {
-                    throw new ArgumentException($"El Precio Unitario para el Platillo ID {detalle.PlatilloID} debe ser mayor que cero.");
-                }
-
-                //después de que la base de datos confirme que la venta fue exitosa, llamaríamos al método de cierre.
-
-                try
-                {
-                    // 1. Grabamos la venta en la BD
-                    int ventaID = _ventaDatos.Insertar(venta);
-
-                    // 2. Si la venta pertenece a una sesión, la cerramos automáticamente
-                    //¿Es el cierre de la cuenta?
-                    if (venta.SesionID.HasValue && venta.SesionID > 0)
-                    {
-                        _sesionDatos.FinalizarSesion(venta.SesionID.Value);
-                    }
-
-                    return ventaID;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error al procesar la venta: {ex.Message}");
-                    throw;
-                }
+                detalle.PrecioUnitario = platilloInfo.Precio;
+                totalCalculado += (detalle.Cantidad * detalle.PrecioUnitario);
             }
 
-            // --- 3. VALIDACIÓN DE COHERENCIA (TOTAL CALCULADO) ---
+            venta.Total = totalCalculado;
 
-            // Calcular el total de la venta basado en los detalles (Cálculo del Servidor)
-            decimal totalCalculado = venta.DetalleVenta.Sum(d => d.Cantidad * d.PrecioUnitario);
-
-            // Validar que el total reportado por el cliente (venta.Total) sea correcto.
-            // Usamos una pequeña tolerancia (0.01m) para evitar problemas de redondeo de decimales.
-            if (Math.Abs(venta.Total - totalCalculado) > 0.01m)
-            {
-                throw new ArgumentException($"El campo 'Total' ({venta.Total:C}) de la venta no coincide con el total calculado de los detalles ({totalCalculado:C}).");
-            }
-
-            // --- 4. VALIDACIÓN DE EXISTENCIAS (LOGICA DE STOCK/INSUMOS) ---
-            // NOTA: La validación de STOCK de INSUMOS (existencia) NO SE HACE AQUÍ.
-            // Se maneja de manera más segura y atómica en el Procedimiento Almacenado 
-            // `sp_InsertarDetalleVenta_Transactional` dentro de la Capa de Datos (con ROLLBACK).
-
-            // --- 5. ORQUESTACIÓN Y LLAMADA A DATOS (Transacción) ---
+            // --- 3. PERSISTENCIA Y CIERRE ---
             try
             {
-                // Si todas las validaciones de negocio pasan, llamamos a la capa de datos
+                // Insertamos la venta y obtenemos el ID
                 int ventaID = _ventaDatos.Insertar(venta);
-                return ventaID;
+                decimal totalFinalSesion = 0;
+
+                // Lógica de Cierre de Sesión
+                if (venta.EsPagoFinal && venta.SesionID.HasValue && venta.SesionID > 0)
+                {
+                    totalFinalSesion = _ventaDatos.ObtenerTotalSesion(venta.SesionID.Value);
+                    _sesionDatos.FinalizarSesion(venta.SesionID.Value);
+                }
+
+                // 2. RETORNO DEL OBJETO COMPLETO:
+                return new RespuestaRegistroVenta
+                {
+                    VentaID = ventaID,
+                    TotalAcumulado = totalFinalSesion,
+                    Mensaje = venta.EsPagoFinal ? "¡Cuenta cerrada! Gracias por su visita." : "¡Pedido recibido! Ya está en cocina."
+                };
             }
             catch (Exception ex)
             {
-                // Captura el error transaccional de la BD (ej. 'Stock insuficiente para un insumo')
-                // y relanza la excepción para que el Controlador la maneje.
-                Console.WriteLine($"Error de Negocio al registrar venta: {ex.Message}");
+                Console.WriteLine($"Error crítico en BD: {ex.Message}");
                 throw;
             }
-
         }
+
 
         // Método para leer la venta (correctamente adaptado)
         public Venta ObtenerVentaConDetalles(int idVenta)
