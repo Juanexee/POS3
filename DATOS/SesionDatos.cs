@@ -107,5 +107,56 @@ namespace DATOS
                 return filasAfectadas > 0;
             }
         }
+
+        public bool EsMesaDisponible(int mesaId)
+        {
+            using (var conexion = new SqlConnection(_cadenaConexion))
+            {
+                // Queremos saber si existe una mesa con ese ID que esté 'Disponible'
+                string sql = "SELECT COUNT(*) FROM Mesas WHERE MesaID = @id AND Estado = 'Disponible'";
+                SqlCommand cmd = new SqlCommand(sql, conexion);
+                cmd.Parameters.AddWithValue("@id", mesaId);
+
+                conexion.Open();
+                int count = (int)cmd.ExecuteScalar();
+
+                // Si el conteo es 1, significa que está libre ✅
+                return count > 0;
+            }
+        }
+
+        public bool EjecutarCambioMesa(int sesionId, int nuevaMesaId)
+        {
+            using (var conexion = new SqlConnection(_cadenaConexion))
+            {
+                // Llamamos al procedimiento almacenado que creamos en SQL
+                var comando = new SqlCommand("sp_CambiarMesaSesion", conexion);
+                comando.CommandType = CommandType.StoredProcedure;
+
+                comando.Parameters.AddWithValue("@SesionID", sesionId);
+                comando.Parameters.AddWithValue("@NuevaMesaID", nuevaMesaId);
+
+                conexion.Open();
+                int filasAfectadas = comando.ExecuteNonQuery();
+
+                // El SP hace 3 UPDATES, así que filasAfectadas debería ser > 0
+                return filasAfectadas > 0;
+            }
+        }
+
+        public string ObtenerEstadoSesion(int sesionId)
+        {
+            using (var conexion = new SqlConnection(_cadenaConexion))
+            {
+                string query = "SELECT estado FROM SesionMesa WHERE sesionID = @sesionId";
+                var comando = new SqlCommand(query, conexion);
+                comando.Parameters.AddWithValue("@sesionId", sesionId);
+
+                conexion.Open();
+                var resultado = comando.ExecuteScalar();
+
+                return resultado?.ToString() ?? string.Empty;
+            }
+        }
     }
 }
