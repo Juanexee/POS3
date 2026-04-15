@@ -17,6 +17,10 @@ namespace NEGOCIO
 
 
         int GuardarVenta(VentaListaDTO venta);
+
+        List<PedidoAgrupadoDTO> ObtenerPedidosParaCocina();
+
+        bool ActualizarEstadoMasivo(string ids, string nuevoEstado);
     }
 
 }

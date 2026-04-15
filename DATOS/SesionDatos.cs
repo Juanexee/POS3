@@ -158,5 +158,70 @@ namespace DATOS
                 return resultado?.ToString() ?? string.Empty;
             }
         }
+
+        public bool CambiarEstadoPedidos(List<int> ids, string nuevoEstado)
+        {
+            using (var conexion = new SqlConnection(_cadenaConexion))
+            {
+                // Convertimos la lista [1,2,3] en una cadena "1,2,3" para el SQL
+                string idsFormateados = string.Join(",", ids);
+
+                string query = $"UPDATE Pedidos SET estado = @estado WHERE pedidoID IN ({idsFormateados})";
+
+                var comando = new SqlCommand(query, conexion);
+                comando.Parameters.AddWithValue("@estado", nuevoEstado);
+
+                conexion.Open();
+                int filasAfectadas = comando.ExecuteNonQuery();
+
+                // Si se actualizaron filas, devolvemos true
+                return filasAfectadas > 0;
+            }
+        }
+
+        public List<PedidoAgrupadoDTO> ObtenerPedidosAgrupados()
+        {
+            var lista = new List<PedidoAgrupadoDTO>();
+
+            using (var conexion = new SqlConnection(_cadenaConexion))
+            {
+                // SQL con la lógica de agrupación y semáforo de tiempo ⏱️
+                string query = @"SELECT 
+    NombrePlatillo, 
+    SUM(Cantidad) AS CantidadTotal, 
+    STRING_AGG(PedidoID, ',') AS IdsRelacionados,
+    MIN(FechaCreacion) AS FechaMinima -- Traemos la fecha más antigua del grupo ⏱️
+FROM Pedidos 
+WHERE Estado = 'Pendiente'
+GROUP BY NombrePlatillo";
+
+                var comando = new SqlCommand(query, conexion);
+                conexion.Open();
+
+                using (var reader = comando.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        lista.Add(new PedidoAgrupadoDTO
+                        {
+                            NombrePlatillo = reader["NombrePlatillo"].ToString(),
+                            CantidadTotal = Convert.ToInt32(reader["CantidadTotal"]),
+                            IdsRelacionados = reader["IdsRelacionados"].ToString(),
+
+                            // Pasamos la fecha mínima; el DTO calculará los minutos y el color 🟢🟡🔴
+                            FechaPrimerPedido = Convert.ToDateTime(reader["FechaMinima"])
+                        });
+                    }
+                }
+            }
+            return lista;
+        }
+
+
+
     }
+
+
+
+
 }

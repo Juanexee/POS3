@@ -60,6 +60,9 @@ namespace NEGOCIO
                 : new RespuestaProceso { Success = false, Message = "Error técnico al mover la mesa." };
         }
 
+
+
+
         private bool EsMesaDisponible(int mesaId)
         {
             // Aquí deberías implementar la lógica real para verificar si la mesa está disponible.
@@ -75,4 +78,6 @@ namespace NEGOCIO
             return _sesionDatos.EjecutarCambioMesa(sesionId, nuevaMesaId);
         }
     }
+
+
 }

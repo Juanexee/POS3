@@ -114,5 +114,27 @@ namespace NEGOCIO
             // Si todo es válido, llama a la capa de datos
             return _ventaDatos.RegistrarVenta(venta);
         }
+
+        public List<PedidoAgrupadoDTO> ObtenerPedidosParaCocina()
+        {
+            // Llamamos a la capa de datos para obtener la lista procesada
+            // Aquí es donde la "magia" del semáforo ocurre al retornar el DTO
+            return _ventaDatos.ListarPedidosAgrupados();
+        }
+
+        public bool ActualizarEstadoMasivo(string ids, string nuevoEstado)
+        {
+            // Validación de seguridad: Solo permitimos estados válidos
+            string[] estadosValidos = { "EnPreparacion", "Listo", "Entregado" };
+
+            if (!estadosValidos.Contains(nuevoEstado))
+            {
+                throw new ArgumentException("El estado proporcionado no es válido para la cocina.");
+            }
+
+            // Llamamos a la capa de datos
+            // Nota: Necesitaremos crear este método en IVentaDatos/VentaDatos también
+            return _ventaDatos.ActualizarEstadoMasivo(ids, nuevoEstado);
+        }
     }
 }

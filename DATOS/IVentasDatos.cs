@@ -19,5 +19,10 @@ namespace DATOS
         public Venta SeleccionarVentaConDetalle(int idVenta);
 
         decimal ObtenerTotalSesion(int sesionId);
+
+        
+        List<PedidoAgrupadoDTO> ListarPedidosAgrupados();
+
+        bool ActualizarEstadoMasivo(string ids, string nuevoEstado);
     }
 }

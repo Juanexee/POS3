@@ -177,5 +177,75 @@ namespace DATOS
             }
         }
 
+        public List<PedidoAgrupadoDTO> ListarPedidosAgrupados()
+        {
+            List<PedidoAgrupadoDTO> lista = new List<PedidoAgrupadoDTO>();
+
+            // Usamos la conexión a tu base de datos RestauranteDB
+            using (var conexion = new SqlConnection(_cadenaConexion))
+            {
+                try
+                {
+                    SqlCommand cmd = new SqlCommand("sp_ConsultarPedidosCocinaAgrupados", conexion);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    conexion.Open();
+
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            lista.Add(new PedidoAgrupadoDTO()
+                            {
+                                NombrePlatillo = dr["NombrePlatillo"].ToString(),
+                                CantidadTotal = Convert.ToInt32(dr["CantidadTotal"]),
+                                FechaPrimerPedido = Convert.ToDateTime(dr["FechaPrimerPedido"]),
+                                IdsRelacionados = dr["IdsRelacionados"].ToString()
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Es importante manejar el error para la trazabilidad
+                    lista = new List<PedidoAgrupadoDTO>();
+                }
+            }
+            return lista;
+        }
+
+        public bool ActualizarEstadoMasivo(string ids, string nuevoEstado)
+        {
+            bool respuesta = false;
+
+            using (SqlConnection oconexion = new SqlConnection(_cadenaConexion))
+            {
+                try
+                {
+                    SqlCommand cmd = new SqlCommand("sp_ActualizarEstadoPedidosAgrupados", oconexion);
+                    // Pasamos los parámetros que espera el SP
+                    cmd.Parameters.AddWithValue("IdsPedidos", ids);
+                    cmd.Parameters.AddWithValue("NuevoEstado", nuevoEstado);
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    oconexion.Open();
+
+                    // ExecuteNonQuery devuelve el número de filas afectadas
+                    int filasAfectadas = cmd.ExecuteNonQuery();
+
+                    if (filasAfectadas > 0)
+                    {
+                        respuesta = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Aquí podrías loguear el error para depuración
+                    respuesta = false;
+                    throw new Exception("Error al actualizar los estados en la base de datos.", ex);
+                }
+            }
+            return respuesta;
+        }
+
     }
 }
