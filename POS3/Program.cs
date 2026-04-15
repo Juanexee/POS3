@@ -1,10 +1,11 @@
 using System.Text;
 using DATOS;
+using DATOS;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using DATOS;
 using NEGOCIO;
+using POS3.Hubs;
 namespace API_REST_V3
 
 {
@@ -24,7 +25,7 @@ namespace API_REST_V3
             // Validar la cadena de conexión antes
             var connectionString = builder.Configuration.GetConnectionString("RestauranteDB");
             if (string.IsNullOrWhiteSpace(connectionString))
-                throw new InvalidOperationException("Server=WINDOWS-TUTGG56\\KEVINLARA;Database=RestauranteDB;User Id=sa;Password=An1w0;Trusted_Connection=True;TrustServerCertificate=True");
+                throw new InvalidOperationException("");
 
             // -----------------------
             // Bindear configuración Jwt a POCO y validarla
@@ -32,8 +33,21 @@ namespace API_REST_V3
             builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
             builder.Services.AddScoped<IVentaDatos>(provider => new VentaDatos(connectionString));
             builder.Services.AddScoped<InsumoDatos>(s => new InsumoDatos(connectionString));
+            // Registrar Sesiones
+            builder.Services.AddScoped<SesionDatos>(s => new SesionDatos(connectionString));
+            builder.Services.AddScoped<SesionNegocio>();
+           
+            builder.Services.AddScoped<IVentaNegocio, VentaNegocio>(s =>
+                 new VentaNegocio(
+                   s.GetRequiredService<IVentaDatos>(),
+                   s.GetRequiredService<SesionDatos>(),
+                   s.GetRequiredService<PlatillosDatos>()
+                 )
+             );
             builder.Services.AddScoped<CompraDatos>(s => new CompraDatos(connectionString));
             builder.Services.AddScoped<UnidadMedidaDatos>(s => new UnidadMedidaDatos(connectionString));
+            builder.Services.AddScoped<PlatillosDatos>(s => new PlatillosDatos(connectionString));
+            builder.Services.AddScoped<IPlatillosDatos, PlatillosDatos>(s => new PlatillosDatos(connectionString));
 
             // Opcional: obtener una instancia inmediata para validar claves ahora
             var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -48,11 +62,15 @@ namespace API_REST_V3
             // -----------------------
             // Servicios
             // -----------------------
-            builder.Services.AddControllers();
             builder.Services.AddScoped<VentaNegocio>();
+            builder.Services.AddScoped<SesionNegocio>();
+            builder.Services.AddScoped<PedidoNegocio>();
             builder.Services.AddScoped<InsumoNegocio>();
             builder.Services.AddScoped<CompraNegocio>();
+            builder.Services.AddSignalR();
             builder.Services.AddScoped<UnidadMedidaNegocio>();
+
+            builder.Services.AddControllers();
 
 
             // Configuración de autenticación JWT
@@ -166,9 +184,10 @@ namespace API_REST_V3
 
             app.UseAuthentication();
             app.UseAuthorization();
+            app.MapHub<CocinaHub>("/cocinaHub");
 
             app.MapControllers();
-
+           
             app.Run();
 
 

@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using NEGOCIO;
+using POS3.Hubs;
 
 namespace POS4.Controllers
 {
@@ -12,42 +14,46 @@ namespace POS4.Controllers
     {
 
         private readonly VentaNegocio _ventaNegocio;
+        private readonly IHubContext<CocinaHub> _hubContext;
 
         // Constructor con Inyección de Dependencias (DI)
-        public VentasController(VentaNegocio ventaNegocio)
+        public VentasController(VentaNegocio ventaNegocio, IHubContext<CocinaHub> hubContext)
         {
             _ventaNegocio = ventaNegocio;
+            _hubContext = hubContext;
         }
         /// <summary> Insertar venta con sus detalles (transaccion).</summary>
-        [HttpPost]
-        public IActionResult RegistrarVenta([FromBody] Venta venta)
+        [HttpPost("registrar")]
+        public async Task<IActionResult> RegistrarVenta([FromBody] Venta venta)
         {
-            if (!ModelState.IsValid)
-            {
-                // Validación básica de los DTOs antes de tocar la BLL
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             try
             {
-                // Llamada a la Capa de Negocio para iniciar la transacción en la BD
-                int ventaID = _ventaNegocio.RegistrarVenta(venta);
+                // 1. Ejecutamos la lógica de negocio para guardar en la BD
+                var respuesta = _ventaNegocio.RegistrarVenta(venta);
 
-                // Si es exitoso, devuelve el ID de la nueva venta con un código 201 Created
-                return CreatedAtAction(nameof(RegistrarVenta), new { id = ventaID }, venta);
+                // 2. Si la venta fue exitosa, notificamos a la cocina 🔔
+                if (respuesta.Success)
+                {
+                    // Enviamos el mismo mensaje para que la cocina refresque su lista
+                    await _hubContext.Clients.All.SendAsync("PedidoActualizado");
+                }
+
+                return Ok(respuesta);
             }
             catch (ArgumentException argEx)
             {
-                // Maneja errores de validación de negocio (ej. "La venta debe contener al menos un producto.")
-                return BadRequest(new { message = argEx.Message });
+                return BadRequest(new { success = false, message = argEx.Message });
             }
             catch (Exception ex)
             {
-                // Este bloque captura cualquier error no controlado,
-                // incluyendo el error de "Stock Insuficiente" que se lanzó desde la Capa de Datos.
-
-                // El error 500 Internal Server Error es apropiado para un fallo transaccional.
-                return StatusCode(500, new { message = "Error interno del servidor al registrar la venta. La transacción fue revertida.", detail = ex.Message });
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "No se pudo procesar el pedido.",
+                    detail = ex.Message
+                });
             }
         }
 
@@ -102,6 +108,61 @@ namespace POS4.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Error al obtener el listado de ventas.", detail = ex.Message });
+            }
+        }
+
+        [HttpGet("pedidos")]
+        public IActionResult ObtenerPedidosCocina()
+        {
+            try
+            {
+                // Llamamos a la lógica de negocio 🧠
+                var pedidos = _ventaNegocio.ObtenerPedidosParaCocina();
+
+                if (pedidos == null || !pedidos.Any())
+                {
+                    return NotFound("No hay pedidos pendientes en cocina.");
+                }
+
+                return Ok(pedidos);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno: {ex.Message}");
+            }
+        }
+
+
+        /// <summary>
+        /// Actualiza el estado de un grupo de pedidos (Ej: de Pendiente a En Preparación o a Listo).
+        /// </summary>
+        /// <param name="ids">Cadena de IDs separados por coma (ej: "10,11,12")</param>
+        /// <param name="nuevoEstado">El estado destino ('EnPreparacion' o 'Listo')</param>
+        [HttpPatch("actualizar-estado-grupo")]
+        public async Task<IActionResult> ActualizarEstadoPedidos([FromQuery] string ids, [FromQuery] string nuevoEstado)
+        {
+            if (string.IsNullOrEmpty(ids)) return BadRequest("Debe proporcionar al menos un ID.");
+
+            try
+            {
+                // Llamamos a la capa de negocio para procesar la actualización masiva
+                // Nota: Asegúrate de implementar este método en VentaNegocio
+                bool resultado = _ventaNegocio.ActualizarEstadoMasivo(ids, nuevoEstado);
+
+                if (resultado)
+                {
+                    // Enviamos un mensaje llamado "PedidoActualizado" a todos los clientes conectados
+                    await _hubContext.Clients.All.SendAsync("PedidoActualizado");
+                    return Ok(new { success = true, message = $"Pedidos actualizados a: {nuevoEstado}" });
+                }
+
+
+
+                return BadRequest("No se pudieron actualizar los pedidos.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error al actualizar estados.", detail = ex.Message });
             }
         }
 

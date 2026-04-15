@@ -20,60 +20,49 @@ namespace DATOS
 
         // Metodo Insertar // Dentro de VentaDatos.cs, en el método Insertar(Venta venta)
 
+        // Dentro de VentaDatos.cs
         public int Insertar(Venta venta)
         {
-            using SqlConnection con = new(_cadenaConexion);
-            con.Open();
-            using SqlTransaction transaction = con.BeginTransaction();
+            // 1. Preparamos el contenedor para los detalles (UDTT)
+            DataTable tablaDetalles = new DataTable();
+            tablaDetalles.Columns.Add("platilloID", typeof(int));
+            tablaDetalles.Columns.Add("cantidad", typeof(int));
+            tablaDetalles.Columns.Add("precio_unitario", typeof(decimal));
+
+            foreach (var item in venta.DetalleVenta)
+            {
+                tablaDetalles.Rows.Add(item.PlatilloID, item.Cantidad, item.PrecioUnitario);
+            }
+
+            using var con = new SqlConnection(_cadenaConexion);
+            using var cmd = new SqlCommand("sp_RegistrarVentaCompleta_QR", con);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            // 2. Parámetros de la cabecera
+            cmd.Parameters.AddWithValue("@mesaID", venta.MesaID);
+            cmd.Parameters.AddWithValue("@sesionID", (object)venta.SesionID ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@usuarioID", (object)venta.UsuarioID ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@clienteID", (object)venta.ClienteID ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@total", venta.Total);
+
+            // 3. El parámetro de tabla (UDTT) 🔑
+            var parametroLista = cmd.Parameters.AddWithValue("@detalles", tablaDetalles);
+            parametroLista.SqlDbType = SqlDbType.Structured;
+            parametroLista.TypeName = "dbo.DetalleVentaType";
 
             try
             {
-                // 1. Insertar Cabecera y obtener el VentaID
-                int ventaID = 0;
-                using (SqlCommand cmd = new("sp_InsertarVenta", con, transaction)) // Nuevo SP para cabecera
-                {
-                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
-
-                    // Añadir nuevos parámetros de entrada (Mesa, Cliente)
-                    cmd.Parameters.AddWithValue("@clienteID", (object)venta.ClienteID ?? DBNull.Value); // Manejar nulos
-                    cmd.Parameters.AddWithValue("@mesaID", venta.MesaID);
-                    cmd.Parameters.AddWithValue("@usuarioID", venta.UsuarioID);
-                    cmd.Parameters.AddWithValue("@total", venta.Total);
-
-                    ventaID = Convert.ToInt32(cmd.ExecuteScalar()); // SCOPE_IDENTITY es decimal/numeric, se convierte
-                }
-                venta.VentaID = ventaID;
-
-                // 2. Insertar Detalle de Venta (en un bucle) y Consumir Insumos
-                foreach (var detalle in venta.DetalleVenta)
-                {
-                    // Usamos el nuevo SP transaccional
-                    using (SqlCommand cmdDetalle = new("sp_InsertarDetalleVenta_Transactional", con, transaction))
-                    {
-                        cmdDetalle.CommandType = System.Data.CommandType.StoredProcedure;
-
-                        cmdDetalle.Parameters.AddWithValue("@ventaID", ventaID);
-                        cmdDetalle.Parameters.AddWithValue("@platilloID", detalle.PlatilloID); // Nuevo nombre
-                        cmdDetalle.Parameters.AddWithValue("@cantidad", detalle.Cantidad);
-                        cmdDetalle.Parameters.AddWithValue("@precio_unitario", detalle.PrecioUnitario);
-
-                        cmdDetalle.ExecuteNonQuery(); // Aquí se verifica el stock de Insumos
-                    }
-                }
-
-                // 3. Si todo va bien: transaction.Commit();
-                transaction.Commit();
-                return ventaID;
+                con.Open();
+                // ExecuteScalar devuelve el ID de la venta que genera el SP
+                object result = cmd.ExecuteScalar();
+                return (result != null) ? Convert.ToInt32(result) : 0;
             }
             catch (Exception ex)
             {
-                // Si falla la cabecera, un detalle o el stock de insumos, revertir todo.
-                transaction.Rollback();
-                // Propaga la excepción (ej. "Stock insuficiente...")
-                throw new Exception("Error al registrar la venta (RestauranteDB). Transacción revertida.", ex);
+                // Aquí capturamos errores de SQL (como el RAISERROR de stock insuficiente)
+                throw new Exception("Error en la base de datos al registrar la venta completa.", ex);
             }
         }
-
         // Dentro de VentaDatos.cs
 
         public Venta SeleccionarVentaConDetalle(int idVenta)
@@ -168,9 +157,94 @@ namespace DATOS
 
         public int RegistrarVenta(VentaListaDTO venta)
         {
-            // Implementación mínima para cumplir con la interfaz.
-            // Puedes ajustar la lógica según tus necesidades reales.
+            
             throw new NotImplementedException("RegistrarVenta aún no está implementado.");
+        }
+
+        public decimal ObtenerTotalSesion(int sesionId)
+        {
+            using (var conexion = new SqlConnection(_cadenaConexion))
+            {
+                // Sumamos la columna 'total' de todas las ventas de esta sesión 💰
+                string query = "SELECT ISNULL(SUM(total), 0) FROM Ventas WHERE sesionID = @sesionId";
+
+                var comando = new SqlCommand(query, conexion);
+                comando.Parameters.AddWithValue("@sesionId", sesionId);
+
+                conexion.Open();
+                // Usamos ExecuteScalar porque solo esperamos un único valor numérico
+                return (decimal)comando.ExecuteScalar();
+            }
+        }
+
+        public List<PedidoAgrupadoDTO> ListarPedidosAgrupados()
+        {
+            List<PedidoAgrupadoDTO> lista = new List<PedidoAgrupadoDTO>();
+
+            // Usamos la conexión a tu base de datos RestauranteDB
+            using (var conexion = new SqlConnection(_cadenaConexion))
+            {
+                try
+                {
+                    SqlCommand cmd = new SqlCommand("sp_ConsultarPedidosCocinaAgrupados", conexion);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    conexion.Open();
+
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            lista.Add(new PedidoAgrupadoDTO()
+                            {
+                                NombrePlatillo = dr["NombrePlatillo"].ToString(),
+                                CantidadTotal = Convert.ToInt32(dr["CantidadTotal"]),
+                                FechaPrimerPedido = Convert.ToDateTime(dr["FechaPrimerPedido"]),
+                                IdsRelacionados = dr["IdsRelacionados"].ToString()
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Es importante manejar el error para la trazabilidad
+                    lista = new List<PedidoAgrupadoDTO>();
+                }
+            }
+            return lista;
+        }
+
+        public bool ActualizarEstadoMasivo(string ids, string nuevoEstado)
+        {
+            bool respuesta = false;
+
+            using (SqlConnection oconexion = new SqlConnection(_cadenaConexion))
+            {
+                try
+                {
+                    SqlCommand cmd = new SqlCommand("sp_ActualizarEstadoPedidosAgrupados", oconexion);
+                    // Pasamos los parámetros que espera el SP
+                    cmd.Parameters.AddWithValue("IdsPedidos", ids);
+                    cmd.Parameters.AddWithValue("NuevoEstado", nuevoEstado);
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    oconexion.Open();
+
+                    // ExecuteNonQuery devuelve el número de filas afectadas
+                    int filasAfectadas = cmd.ExecuteNonQuery();
+
+                    if (filasAfectadas > 0)
+                    {
+                        respuesta = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Aquí podrías loguear el error para depuración
+                    respuesta = false;
+                    throw new Exception("Error al actualizar los estados en la base de datos.", ex);
+                }
+            }
+            return respuesta;
         }
 
     }

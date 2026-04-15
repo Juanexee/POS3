@@ -9,7 +9,7 @@ using Microsoft.Data.SqlClient;
 
 namespace DATOS
 {
-    public  class PlatillosDatos
+    public  class PlatillosDatos : IPlatillosDatos
     {
         //Campo Para la cadena de conexion
         private readonly string _cadenaConexion;
