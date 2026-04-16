@@ -111,6 +111,16 @@ namespace API_REST_V3
 
             builder.Services.AddAuthorization();
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("PermitirFrontend", policy =>
+                {
+                    policy.AllowAnyOrigin()   // Permite que cualquier HTML abra la API
+                          .AllowAnyMethod()   // Permite GET, POST, PUT, DELETE
+                          .AllowAnyHeader();  // Permite enviar tokens JWT
+                });
+            });
+
             // -----------------------
             // Swagger
             // -----------------------
@@ -174,6 +184,8 @@ namespace API_REST_V3
 
 
 
+
+
             // -----------------------
             // Build y middlewares
             // -----------------------
@@ -181,6 +193,7 @@ namespace API_REST_V3
 
             app.UseSwagger();
             app.UseSwaggerUI();
+            app.UseCors("PermitirFrontend");
 
             app.UseAuthentication();
             app.UseAuthorization();
