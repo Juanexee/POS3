@@ -22,16 +22,15 @@ namespace DATOS
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
-                // Usamos SQL directo para este ejemplo, o podrías crear un SP
-                string query = @"INSERT INTO SesionMesa (mesaID, estado, fecha_inicio) 
-                               VALUES (@mesaId, 'Activa', GETDATE());
-                               SELECT SCOPE_IDENTITY();";
+                var comando = new SqlCommand("sp_AbrirSesionMesa", conexion);
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.AddWithValue("@mesaID", mesaId);
 
-                var comando = new SqlCommand(query, conexion);
-                comando.Parameters.AddWithValue("@mesaId", mesaId);
 
                 conexion.Open();
-                return Convert.ToInt32(comando.ExecuteScalar());
+                // El SP devuelve una fila con el sesionID
+                var resultado = comando.ExecuteScalar();
+                return Convert.ToInt32(resultado);
             }
         }
 
@@ -39,8 +38,8 @@ namespace DATOS
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
-                string query = "SELECT COUNT(1) FROM SesionMesa WHERE mesaID = @mesaId AND estado = 'Activa'";
-                var comando = new SqlCommand(query, conexion);
+                var comando = new SqlCommand("sp_ExisteSesionActiva", conexion);
+                comando.CommandType = CommandType.StoredProcedure;
                 comando.Parameters.AddWithValue("@mesaId", mesaId);
 
                 conexion.Open();
@@ -87,23 +86,12 @@ namespace DATOS
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
-                // 1. Cerramos la sesión 📱
-                // 2. Buscamos el mesaID de esa sesión y ponemos la mesa como 'Disponible' 🟢
-                string query = @"
-            UPDATE SesionMesa 
-            SET estado = 'Finalizada', fecha_fin = GETDATE() 
-            WHERE sesionID = @sesionId;
-
-            UPDATE Mesas 
-            SET estado = 'Disponible' 
-            WHERE mesaID = (SELECT mesaID FROM SesionMesa WHERE sesionID = @sesionId);";
-
-                var comando = new SqlCommand(query, conexion);
-                comando.Parameters.AddWithValue("@sesionId", sesionId);
+                var comando = new SqlCommand("sp_FinalizarSesionYLibre", conexion);
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.AddWithValue("@sesionID", sesionId);
 
                 conexion.Open();
                 int filasAfectadas = comando.ExecuteNonQuery();
-
                 return filasAfectadas > 0;
             }
         }
@@ -112,16 +100,12 @@ namespace DATOS
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
-                // Queremos saber si existe una mesa con ese ID que esté 'Disponible'
-                string sql = "SELECT COUNT(*) FROM Mesas WHERE MesaID = @id AND Estado = 'Disponible'";
-                SqlCommand cmd = new SqlCommand(sql, conexion);
-                cmd.Parameters.AddWithValue("@id", mesaId);
+                var comando = new SqlCommand("sp_EsMesaDisponible", conexion);
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.AddWithValue("@mesaId", mesaId);
 
                 conexion.Open();
-                int count = (int)cmd.ExecuteScalar();
-
-                // Si el conteo es 1, significa que está libre ✅
-                return count > 0;
+                return (int)comando.ExecuteScalar() > 0;
             }
         }
 
@@ -148,13 +132,12 @@ namespace DATOS
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
-                string query = "SELECT estado FROM SesionMesa WHERE sesionID = @sesionId";
-                var comando = new SqlCommand(query, conexion);
+                var comando = new SqlCommand("sp_ObtenerEstadoSesion", conexion);
+                comando.CommandType = CommandType.StoredProcedure;
                 comando.Parameters.AddWithValue("@sesionId", sesionId);
 
                 conexion.Open();
                 var resultado = comando.ExecuteScalar();
-
                 return resultado?.ToString() ?? string.Empty;
             }
         }
@@ -182,22 +165,12 @@ namespace DATOS
         public List<PedidoAgrupadoDTO> ObtenerPedidosAgrupados()
         {
             var lista = new List<PedidoAgrupadoDTO>();
-
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
-                // SQL con la lógica de agrupación y semáforo de tiempo ⏱️
-                string query = @"SELECT 
-    NombrePlatillo, 
-    SUM(Cantidad) AS CantidadTotal, 
-    STRING_AGG(PedidoID, ',') AS IdsRelacionados,
-    MIN(FechaCreacion) AS FechaMinima -- Traemos la fecha más antigua del grupo ⏱️
-FROM Pedidos 
-WHERE Estado = 'Pendiente'
-GROUP BY NombrePlatillo";
+                var comando = new SqlCommand("sp_ConsultarPedidosCocinaAgrupados", conexion);
+                comando.CommandType = CommandType.StoredProcedure;
 
-                var comando = new SqlCommand(query, conexion);
                 conexion.Open();
-
                 using (var reader = comando.ExecuteReader())
                 {
                     while (reader.Read())
@@ -207,9 +180,7 @@ GROUP BY NombrePlatillo";
                             NombrePlatillo = reader["NombrePlatillo"].ToString(),
                             CantidadTotal = Convert.ToInt32(reader["CantidadTotal"]),
                             IdsRelacionados = reader["IdsRelacionados"].ToString(),
-
-                            // Pasamos la fecha mínima; el DTO calculará los minutos y el color 🟢🟡🔴
-                            FechaPrimerPedido = Convert.ToDateTime(reader["FechaMinima"])
+                            FechaPrimerPedido = Convert.ToDateTime(reader["FechaPrimerPedido"])
                         });
                     }
                 }

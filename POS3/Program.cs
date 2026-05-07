@@ -69,6 +69,9 @@ namespace API_REST_V3
             builder.Services.AddScoped<CompraNegocio>();
             builder.Services.AddSignalR();
             builder.Services.AddScoped<UnidadMedidaNegocio>();
+            // En Program.cs
+            builder.Services.AddScoped<MesaDatos>(s => new MesaDatos(connectionString));
+            builder.Services.AddScoped<MesaNegocio>();
 
             builder.Services.AddControllers();
 
