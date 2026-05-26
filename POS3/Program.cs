@@ -48,6 +48,7 @@ namespace API_REST_V3
             builder.Services.AddScoped<UnidadMedidaDatos>(s => new UnidadMedidaDatos(connectionString));
             builder.Services.AddScoped<PlatillosDatos>(s => new PlatillosDatos(connectionString));
             builder.Services.AddScoped<IPlatillosDatos, PlatillosDatos>(s => new PlatillosDatos(connectionString));
+            builder.Services.AddScoped<DATOS.IRecetaDatos>(s => new DATOS.RecetaDatos(connectionString));
 
             // Opcional: obtener una instancia inmediata para validar claves ahora
             var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -67,6 +68,8 @@ namespace API_REST_V3
             builder.Services.AddScoped<PedidoNegocio>();
             builder.Services.AddScoped<InsumoNegocio>();
             builder.Services.AddScoped<CompraNegocio>();
+            // Registrar la capa de negocio para las Recetas
+            builder.Services.AddScoped<RecetaNegocio>();
             builder.Services.AddSignalR();
             builder.Services.AddScoped<UnidadMedidaNegocio>();
             // En Program.cs

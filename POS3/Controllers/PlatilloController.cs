@@ -138,6 +138,34 @@ namespace POS3.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Obtener un platillo específico por su ID
+        /// </summary>
+        /// <param name="id">ID único del platillo</param>
+        /// <returns></returns>
+        /// <response code="200">Devuelve los datos del platillo solicitado</response>
+        /// <response code="404">El platillo con el ID especificado no se encontró</response>
+        /// <response code="500">Fallo al leer los datos en la base de datos</response>
+
+        [HttpGet("{id}")]
+        public IActionResult LeerPorId(int id)
+        {
+            try
+            {
+                var platillo = _platillosDatos.LeerPorId(id);
+                if (platillo == null)
+                {
+                    return NotFound(new { mensaje = $"Platillo con ID {id} no encontrado." });
+                }
+
+                return Ok(platillo);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Error al obtener el platillo: " + ex.Message });
+            }
+        }
     }
 }
 
