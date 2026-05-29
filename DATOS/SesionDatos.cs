@@ -113,18 +113,17 @@ namespace DATOS
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
-                // Llamamos al procedimiento almacenado que creamos en SQL
                 var comando = new SqlCommand("sp_CambiarMesaSesion", conexion);
                 comando.CommandType = CommandType.StoredProcedure;
 
-                comando.Parameters.AddWithValue("@SesionID", sesionId);
-                comando.Parameters.AddWithValue("@NuevaMesaID", nuevaMesaId);
+                comando.Parameters.AddWithValue("@sesionID", sesionId);
+                comando.Parameters.AddWithValue("@nuevaMesaID", nuevaMesaId);
 
                 conexion.Open();
-                int filasAfectadas = comando.ExecuteNonQuery();
 
-                // El SP hace 3 UPDATES, así que filasAfectadas debería ser > 0
-                return filasAfectadas > 0;
+                // Ejecutamos y validamos si el SP devolvió un 1 (Éxito)
+                var resultado = comando.ExecuteScalar();
+                return resultado != null && Convert.ToInt32(resultado) == 1;
             }
         }
 
