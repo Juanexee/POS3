@@ -69,4 +69,30 @@ public class SesionController : ControllerBase
 
         return BadRequest("No se pudieron actualizar los pedidos.");
     }
+
+    /// <summary>
+    /// Confirmación de entrega de platillos a la mesa por parte del mesero
+    /// </summary>
+    [HttpPost("entregar-pedidos")]
+    public IActionResult EntregarPedidos([FromBody] ActualizarPedidoRequest request)
+    {
+        try
+        {
+            // Invocamos las reglas de negocio de la capa intermedia
+            var resultado = _sesionNegocio.MarcarPedidosComoEntregados(request.IdsPedidos);
+
+            if (resultado.Success)
+            {
+                return Ok(resultado); // Retorna 200 con el mensaje exitoso
+            }
+
+            return BadRequest(resultado); // Retorna 400 mapeando el error de la regla rota
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Fallo crítico en el servidor: " + ex.Message });
+        }
+    }
+
+
 }

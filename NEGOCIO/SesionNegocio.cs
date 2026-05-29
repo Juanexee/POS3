@@ -1,5 +1,6 @@
 ﻿using DATOS;
 using ENTIDADES;
+using System.Collections.Generic;
 
 namespace NEGOCIO
 {
@@ -77,7 +78,42 @@ namespace NEGOCIO
             // Por ahora, devolvemos true como ejemplo.
             return _sesionDatos.EjecutarCambioMesa(sesionId, nuevaMesaId);
         }
+
+        public RespuestaProceso MarcarPedidosComoEntregados(List<int> idsPedidos)
+        {
+            // REGLA 1: Validación de nulidad o lista vacía
+            if (idsPedidos == null || !idsPedidos.Any())
+            {
+                return new RespuestaProceso { Success = false, Message = "Operación inválida: No se proporcionaron IDs de pedidos para entregar." };
+            }
+
+            // REGLA 2: Control del flujo de trabajo de cocina
+            // Consultamos los estados reales en la base de datos para este lote
+            List<string> estadosActuales = _sesionDatos.ObtenerEstadosDePedidos(idsPedidos);
+
+            // Si alguno está en preparación o pendiente, el mesero no lo puede entregar físicamente
+            if (estadosActuales.Any(estado => estado == "Pendiente" || estado == "En Preparación"))
+            {
+                return new RespuestaProceso
+                {
+                    Success = false,
+                    Message = "Denegado: No puedes entregar platillos que aún se están cocinando o están pendientes en cocina."
+                };
+            }
+
+            // Si todos ya pasaron por el estado "Listo", procedemos a la actualización
+            bool exito = _sesionDatos.CambiarEstadoPedidos(idsPedidos, "Entregado");
+
+            if (exito)
+            {
+                return new RespuestaProceso { Success = true, Message = "El lote de platillos ha sido entregado en la mesa con éxito." };
+            }
+
+            return new RespuestaProceso { Success = false, Message = "Error de infraestructura: No se pudieron actualizar los pedidos." };
+        }
     }
+
+
 
 
 }

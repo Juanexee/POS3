@@ -187,7 +187,28 @@ namespace DATOS
             return lista;
         }
 
+        public List<string> ObtenerEstadosDePedidos(List<int> ids)
+        {
+            var estados = new List<string>();
+            using (var conexion = new SqlConnection(_cadenaConexion))
+            {
+                string idsFormateados = string.Join(",", ids);
+                // Consulta limpia para traer los estados actuales en base a los IDs del lote
+                string query = $"SELECT estado FROM Pedidos WHERE pedidoID IN ({idsFormateados})";
 
+                var comando = new SqlCommand(query, conexion);
+                conexion.Open();
+
+                using (var reader = comando.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        estados.Add(reader["estado"].ToString());
+                    }
+                }
+            }
+            return estados;
+        }
 
     }
 
