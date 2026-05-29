@@ -34,6 +34,7 @@ namespace DATOS
         }
 
         // 2. LEER TODAS LAS MESAS
+        // 2. LEER TODAS LAS MESAS
         public List<Mesa> ListarMesas()
         {
             var lista = new List<Mesa>();
@@ -45,24 +46,20 @@ namespace DATOS
                 conexion.Open();
                 using (var reader = comando.ExecuteReader())
                 {
-                    // Obtener índices de columna una sola vez mejora fiabilidad y rendimiento
-                    int idxMesaID = reader.GetOrdinal("mesaID");
-                    int idxNumero = reader.GetOrdinal("numero_mesa");
-                    int idxCapacidad = reader.GetOrdinal("Capacidad");
-                    int idxUbicacion = reader.GetOrdinal("Ubicacion");
-                    int idxEstado = reader.GetOrdinal("Estado");
-
                     while (reader.Read())
                     {
-                        lista.Add(new Mesa
+                        var mesa = new Mesa
                         {
-                            MesaID = !reader.IsDBNull(idxMesaID) ? reader.GetInt32(idxMesaID) : 0,
-                            // Cambiamos a "numero_mesa" porque así lo pusiste en el SELECT del SP
-                            NumeroMesa = !reader.IsDBNull(idxNumero) ? reader.GetInt32(idxNumero) : 0,
-                            Capacidad = !reader.IsDBNull(idxCapacidad) ? reader.GetInt32(idxCapacidad) : 0,
-                            Ubicacion = !reader.IsDBNull(idxUbicacion) ? reader.GetString(idxUbicacion) : string.Empty,
-                            Estado = !reader.IsDBNull(idxEstado) ? reader.GetString(idxEstado) : string.Empty
-                        });
+                            MesaID = Convert.ToInt32(reader["mesaID"]),
+                            NumeroMesa = Convert.ToInt32(reader["numero_mesa"]),
+                            Capacidad = Convert.ToInt32(reader["Capacidad"]),
+                            Ubicacion = reader["Ubicacion"].ToString(),
+                            Estado = reader["Estado"].ToString(),
+
+                            // Lógica para mapear el entero nulo de la sesión
+                            SesionID = reader["sesionID"] != DBNull.Value ? Convert.ToInt32(reader["sesionID"]) : (int?)null
+                        };
+                        lista.Add(mesa);
                     }
                 }
             }

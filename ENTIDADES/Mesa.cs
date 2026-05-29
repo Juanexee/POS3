@@ -13,5 +13,6 @@ namespace ENTIDADES
         public int Capacidad { get; set; }
         public string Ubicacion { get; set; } = string.Empty;
         public string Estado { get; set; } = string.Empty;
+        public int? SesionID { get; set; }
     }
 }
