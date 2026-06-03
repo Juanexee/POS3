@@ -100,5 +100,42 @@ namespace DATOS
                 }
             }
         }
+
+
+        // ---------- DELETE O DESACTIVAR CATEGORÍA (Borrado Seguro) ----------
+        public bool EliminarOIdesactivar(int id)
+        {
+            using (SqlConnection con = new(_cadenaConexion))
+            {
+                con.Open();
+                try
+                {
+                    // 1. Intentamos borrado físico directo
+                    string queryDelete = "DELETE FROM Categorias WHERE categoriaID = @id";
+                    using (SqlCommand cmd = new(queryDelete, con))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+                        int filas = cmd.ExecuteNonQuery();
+                        if (filas > 0) return true; // Se eliminó físicamente con éxito
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    // Error 547 = Conflicto de FK (Tiene platillos asociados)
+                    if (ex.Number == 547)
+                    {
+                        // 2. Aplicamos Borrado Lógico (Desactivación) para proteger la integridad
+                        string queryUpdate = "UPDATE Categorias SET activo = 0 WHERE categoriaID = @id";
+                        using (SqlCommand cmd = new(queryUpdate, con))
+                        {
+                            cmd.Parameters.AddWithValue("@id", id);
+                            return cmd.ExecuteNonQuery() > 0;
+                        }
+                    }
+                    throw; // Si es otro tipo de error SQL, lo elevamos
+                }
+            }
+            return false;
+        }
     }
 }

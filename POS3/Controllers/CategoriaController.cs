@@ -1,134 +1,107 @@
-﻿// Ubicación: API/Controllers/CategoriaController.cs
-
-using DATOS;
+﻿using DATOS;
 using ENTIDADES;
+using NEGOCIO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
+using System;
 
 [Route("Categoria")]
 [ApiController]
-//[Authorize(Roles = "Administrador")] // Solo el Administrador debe manejar categorías
-
 public class CategoriaController : ControllerBase
 {
-    private readonly CategoriasDatos _categoriasDatos;
+    private readonly CategoriaNegocio _categoriaNegocio;
 
-    public CategoriaController(IConfiguration configuration)
+    // Inyección de dependencias a través de la Capa de Negocio
+    public CategoriaController(CategoriaNegocio categoriaNegocio)
     {
-        var cadenaConexion = configuration.GetConnectionString("RestauranteDB");
-        _categoriasDatos = new CategoriasDatos(cadenaConexion);
+        _categoriaNegocio = categoriaNegocio;
     }
 
-
-    /// <summary>
-    /// Insertar un nuevo producto 
-    /// </summary>
-    /// <param name="categoriaDto"></param>
-    /// <returns></returns>
-    /// <response code="201">El producto se inserto con exito</response>
-    /// <response code="500">Fallo en el servidor error al conectarse en la base de datos.</response>
-
-
-
-    //[Authorize(Roles = "Administrador")]
+    [HttpGet("Leer")]
     [AllowAnonymous]
+    public IActionResult LeerTodas()
+    {
+        try
+        {
+            var lista = _categoriaNegocio.ListarTodasLasCategorias();
+            return Ok(lista);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Fallo al conectar con la base de datos: " + ex.Message });
+        }
+    }
+
     [HttpPost("Insertar")]
+    [AllowAnonymous]
     public IActionResult InsertarCategoria([FromBody] CategoriaDTO categoriaDto)
     {
         try
         {
-            _categoriasDatos.Insertar(categoriaDto);
-            return CreatedAtAction(nameof(LeerTodas), new { mensaje = "Categoría creada con éxito." });
+            if (categoriaDto == null) return BadRequest("Datos inválidos.");
+
+            var resultado = _categoriaNegocio.GuardarNuevaCategoria(categoriaDto);
+
+            if (resultado.Success)
+                return Ok(resultado);
+
+            return BadRequest(resultado);
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return StatusCode(500, new { error = ex.Message });
         }
     }
-    /// <summary>
-    /// Ver todos los productos que sean insertado
-    /// </summary>
-    /// <returns></returns>
-    /// <response code="200">Lista de producto</response>
-    /// <response code="401">La consulta de producto requiere que el usuario este logueado</response>
-    /// <response code="500">Fallo al leer los datos de la base de datos</response>
 
-    //  [Authorize(Roles = "Administrador")]
+    /// <summary>
+    /// Elimina una categoría o la desactiva si contiene platillos asignados
+    /// </summary>
+    [HttpDelete("Eliminar/{id}")]
     [AllowAnonymous]
-    [HttpGet("Leer")]
-     public IActionResult LeerTodas()
+    public IActionResult Eliminar(int id)
     {
         try
         {
-            var categorias = _categoriasDatos.LeerTodos();
-            return Ok(categorias);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = "Error al obtener categorías: " + ex.Message });
-        }
-    }
-    /// <summary>
-    /// Buscar un producto insertado en especifico
-    /// </summary>
-    /// <param name="id"></param>
-    /// <returns></returns>
-    /// <response code="200">Devuelve el objeto del producto solicitado</response>
-    /// <response code="401">Token invalido</response>
-    /// <response code="404">No se encontro ningun producto con el id proporcionado</response>
-    /// <response code="500">Fallo en el servidor</response> 
+            var resultado = _categoriaNegocio.EliminarCategoria(id);
 
-    // ---------- GET: Leer una categoría por ID ----------
-    [HttpGet("{id}/Leer")]
-    [AllowAnonymous]
-    public IActionResult LeerPorId(int id)
-    {
-        try
-        {
-            var categoria = _categoriasDatos.LeerPorId(id);
-            if (categoria == null)
+            if (resultado.Success)
             {
-                return NotFound(new { mensaje = $"Categoría con ID {id} no encontrada." });
-            }
-            return Ok(categoria);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-
-    /// <summary>
-    /// Actualizar un producto que se a insertado anteriormente
-    /// </summary>
-    /// <param name="id"></param>
-    /// <param name="categoriaDto"></param>
-    /// <returns></returns>
-    /// <response code="200">El producto se actuliazo con exito</response>
-    /// <response code="404">El producto que se intento actualizar no existe</response>
-    /// <response code="500">Fallo al intentar moificar regristro</response>
-    //[Authorize(Roles = "Administrador")]
-    [AllowAnonymous]
-    // ---------- PUT: Actualizar una categoría por ID ----------
-    [HttpPut("{id}/Actualizar")]
-    public IActionResult ActualizarCategoria(int id, [FromBody] CategoriaDTO categoriaDto)
-    {
-        try
-        {
-            var categoriaExistente = _categoriasDatos.LeerPorId(id);
-            if (categoriaExistente == null)
-            {
-                return NotFound(new { mensaje = $"Categoría con ID {id} no encontrada." });
+                return Ok(resultado); // Retorna 200 OK con detalles de la operación
             }
 
-            _categoriasDatos.Actualizar(id, categoriaDto);
-            return Ok(new { mensaje = "Categoría actualizada correctamente." });
+            return BadRequest(resultado); // Retorna 400 en caso de fallas de negocio
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return StatusCode(500, new { error = "Fallo crítico en el servidor: " + ex.Message });
+        }
+
+
+    }
+
+    /// <summary>
+    /// Actualizar una categoría existente por su ID
+    /// </summary>
+    [HttpPut("Actualizar/{id}")]
+    [AllowAnonymous] // Cambiar por [Authorize] si deseas restringirlo en producción
+    public IActionResult Actualizar(int id, [FromBody] CategoriaDTO categoriaDto)
+    {
+        try
+        {
+            if (categoriaDto == null) return BadRequest("Datos inválidos.");
+
+            var resultado = _categoriaNegocio.ModificarCategoria(id, categoriaDto);
+
+            if (resultado.Success)
+            {
+                return Ok(resultado); // Retorna 200 OK con el DTO de respuesta exitosa
+            }
+
+            return BadRequest(resultado); // Retorna 400 en caso de fallas de validación
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Fallo crítico en el servidor: " + ex.Message });
         }
     }
 }
