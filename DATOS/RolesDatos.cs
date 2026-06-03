@@ -44,40 +44,30 @@ namespace DATOS
         //Metodo Leer Roles
         public List<Rol> Leer()
         {
-            //Creamos una lista llamada lista que actuará como un contenedor para guardar todos los roles que leamos de la base de datos
             List<Rol> lista = new();
-            //1. Abrimos la conexión a la base de datos
             using SqlConnection con = new(_cadenaConexion);
             con.Open();
 
-            //Llamamos al procedimiento almacenado sp_LeerRoles
-            using SqlCommand cmd = new SqlCommand("sp_ReadRoles")
+            // Asegúrate de que llame al SP correcto (ej: "sp_LeerRoles" o "sp_ReadRoles")
+            using SqlCommand cmd = new("sp_LeerRoles", con)
             {
-                CommandType = System.Data.CommandType.StoredProcedure,
-                Connection = con
+                CommandType = CommandType.StoredProcedure
             };
 
-            // Ejecutamos el comando y leemos los datos
-
-            using (var reader = cmd.ExecuteReader())
+            using SqlDataReader reader = cmd.ExecuteReader();
+            while (reader.Read())
             {
-                while (reader.Read())
+                lista.Add(new Rol
                 {
-                    //Mapear la fila actual a un objeto Rol.
-                    Rol rol = new()
-                    {
-                        RolID = Convert.ToInt32(reader["RolID"]),
-                        NombreRol = reader["NombreRol"].ToString()!,
-                        DescripcionRol = reader["DescripcionRol"].ToString()!
-                    };
-                    //Agregamos el objeto rol a la lista
+                    RolID = Convert.ToInt32(reader["rolID"]),
+                    NombreRol = reader["nombreRol"].ToString(),
+                    DescripcionRol = reader["descripcionRol"] != DBNull.Value ? reader["descripcionRol"].ToString() : "",
 
-                    lista.Add(rol);
-
-                }
-
-                return lista;
+                    // 🔴 ¡ESTA ES LA LÍNEA CLAVE QUE SEGURO FALTA O ESTÁ MAL!
+                    Activo = Convert.ToBoolean(reader["activo"])
+                });
             }
+            return lista;
         }
 
         //Metodo Leer por id los roles
@@ -125,27 +115,25 @@ namespace DATOS
         }
 
         //Metodo para Actualizar
-        public void Actualizar(Rol rol)
+        // ---------- UPDATE (Actualizar con Auditoría) ----------
+        public void Actualizar(Rol rol, int usuarioModificacionID)
         {
-            // 1. Abrimos la conexión a la base de datos
             using SqlConnection con = new(_cadenaConexion);
             con.Open();
 
-            // 2. Creamos el comando para ejecutar el procedimiento almacenado
             using SqlCommand cmd = new("sp_ActualizarRol", con)
             {
                 CommandType = CommandType.StoredProcedure
             };
 
-            // 3. Agregamos los parámetros al comando
             cmd.Parameters.AddWithValue("@rolID", rol.RolID);
             cmd.Parameters.AddWithValue("@nombreRol", rol.NombreRol);
-            cmd.Parameters.AddWithValue("@decripcionRol", rol.DescripcionRol);
-            cmd.Parameters.AddWithValue("@activo", rol.Activo);
-            cmd.ExecuteNonQuery();
+            cmd.Parameters.AddWithValue("@descripcionRol", rol.DescripcionRol ?? (object)DBNull.Value);
+            // Enviar el booleano explícitamente como Bit
+            cmd.Parameters.Add("@activo", System.Data.SqlDbType.Bit).Value = rol.Activo;
+            cmd.Parameters.AddWithValue("@usuarioModificacionID", usuarioModificacionID);
 
-            // 4. Ejecutamos el comando
-            cmd.ExecuteNonQuery();
+            cmd.ExecuteNonQuery();      
         }
 
         //Metodo para Eliminar

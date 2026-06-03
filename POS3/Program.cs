@@ -51,6 +51,7 @@ namespace API_REST_V3
             builder.Services.AddScoped<SesionDatos>(s => new SesionDatos(connectionString));
             builder.Services.AddScoped<CompraDatos>(s => new CompraDatos(connectionString));
             builder.Services.AddScoped<UnidadMedidaDatos>(s => new UnidadMedidaDatos(connectionString));
+            builder.Services.AddScoped<RolesDatos>(s => new RolesDatos(connectionString));
 
             // CORRECCIÓN: Unificamos los platillos para evitar registrar PlatillosDatos 3 veces de forma diferente
             builder.Services.AddScoped<PlatillosDatos>(s => new PlatillosDatos(connectionString));
@@ -71,6 +72,7 @@ namespace API_REST_V3
             builder.Services.AddScoped<RecetaNegocio>();
             builder.Services.AddScoped<UnidadMedidaNegocio>();
             builder.Services.AddScoped<MesaNegocio>();
+            builder.Services.AddScoped<RolNegocio>();
 
             // NUEVO: Registramos PlatilloNegocio para que funcione con tu PlatilloController correctamente
             builder.Services.AddScoped<PlatilloNegocio>();
@@ -202,4 +204,4 @@ namespace API_REST_V3
             app.Run();
         }
     }
-}
+}   
