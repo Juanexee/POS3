@@ -1,4 +1,4 @@
-﻿using DATOS;
+using DATOS;
 using ENTIDADES;
 using NEGOCIO;
 using Microsoft.AspNetCore.Authorization;
@@ -33,7 +33,7 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpPost("Insertar")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")]
     public IActionResult InsertarCategoria([FromBody] CategoriaDTO categoriaDto)
     {
         try
@@ -57,7 +57,7 @@ public class CategoriaController : ControllerBase
     /// Elimina una categoría o la desactiva si contiene platillos asignados
     /// </summary>
     [HttpDelete("Eliminar/{id}")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")]
     public IActionResult Eliminar(int id)
     {
         try
@@ -83,7 +83,7 @@ public class CategoriaController : ControllerBase
     /// Actualizar una categoría existente por su ID
     /// </summary>
     [HttpPut("Actualizar/{id}")]
-    [AllowAnonymous] // Cambiar por [Authorize] si deseas restringirlo en producción
+    [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")]
     public IActionResult Actualizar(int id, [FromBody] CategoriaDTO categoriaDto)
     {
         try

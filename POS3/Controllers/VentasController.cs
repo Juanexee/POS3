@@ -1,4 +1,4 @@
-﻿using ENTIDADES;
+using ENTIDADES;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -97,7 +97,7 @@ namespace POS4.Controllers
         /// <response code="404">La venta con el ID especificado no existe</response>
         /// <response code="500">Fallo en el servidor</response>
         [HttpGet]
-        [Authorize(Roles = "Administrador,Cajero")]
+        [Authorize(Roles = "Administrador,Cajero,Administrador3,Cajero3,CAJA,El super admin,admin")]
         public IActionResult ObtenerListadoVentas()
         {
             try
@@ -119,12 +119,8 @@ namespace POS4.Controllers
                 // Llamamos a la lógica de negocio 🧠
                 var pedidos = _ventaNegocio.ObtenerPedidosParaCocina();
 
-                if (pedidos == null || !pedidos.Any())
-                {
-                    return NotFound("No hay pedidos pendientes en cocina.");
-                }
-
-                return Ok(pedidos);
+                // Devolvemos 200 OK con una lista vacía si no hay pedidos (evita error 404 en consola)
+                return Ok(pedidos ?? new List<PedidoAgrupadoDTO>());
             }
             catch (Exception ex)
             {
@@ -166,5 +162,46 @@ namespace POS4.Controllers
             }
         }
 
+        [HttpPut("{id}/cobrar")]
+        public IActionResult CobrarVenta(int id)
+        {
+            try
+            {
+                var venta = _ventaNegocio.ObtenerVentaConDetalles(id);
+                if (venta == null)
+                {
+                    return NotFound(new { success = false, message = "Venta no encontrada." });
+                }
+
+                bool resultado = _ventaNegocio.ActualizarEstadoVenta(id, "Pagada");
+                if (resultado)
+                {
+                    return Ok(new { success = true, message = "Cobro registrado exitosamente." });
+                }
+                return BadRequest(new { success = false, message = "No se pudo actualizar el estado de la venta." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet("activa/mesa/{mesaId}")]
+        public IActionResult ObtenerVentaActivaPorMesa(int mesaId)
+        {
+            try
+            {
+                int ventaId = _ventaNegocio.ObtenerVentaActivaPorMesa(mesaId);
+                if (ventaId <= 0)
+                {
+                    return NotFound(new { success = false, message = "No hay consumo activo para esta mesa." });
+                }
+                return Ok(new { success = true, ventaID = ventaId });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +12,8 @@ namespace ENTIDADES
         public int CantidadTotal { get; set; }
         public string IdsRelacionados { get; set; } // Vital para "Aceptar Grupo"
         public DateTime FechaPrimerPedido { get; set; } // Para calcular el tiempo real
+        public string NumerosMesas { get; set; } = string.Empty;
+        public string Estado { get; set; } = string.Empty;
 
         // Propiedad calculada: No se guarda en BD, se genera al vuelo
         public int MinutosEspera => (int)(DateTime.Now - FechaPrimerPedido).TotalMinutes;

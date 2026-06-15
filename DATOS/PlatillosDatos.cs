@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -9,7 +9,7 @@ using Microsoft.Data.SqlClient;
 
 namespace DATOS
 {
-    public  class PlatillosDatos : IPlatillosDatos
+    public class PlatillosDatos : IPlatillosDatos
     {
         //Campo Para la cadena de conexion
         private readonly string _cadenaConexion;
@@ -20,7 +20,7 @@ namespace DATOS
         }
 
         //Metodo Insertar Platillos
-        public void Insertar(PlatilloDTO platillo)
+        public virtual void Insertar(PlatilloDTO platillo)
         {
             //1. Abrimos la conexión a la base de datos
             using SqlConnection con = new(_cadenaConexion);
@@ -38,11 +38,14 @@ namespace DATOS
             cmd.Parameters.AddWithValue("@descripcion", platillo.Descripcion ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@precio", platillo.Precio);
             cmd.Parameters.AddWithValue("@categoriaID", platillo.CategoriaID);
+
+            cmd.Parameters.AddWithValue("@imagenBase64", platillo.ImagenBase64 ?? (object)DBNull.Value);
+
             cmd.ExecuteNonQuery();
         }
 
         //Metodo Leer Platillos
-        public List<Platillo> Leer()
+        public virtual List<Platillo> Leer()
         {
             //Creamos una lista llamada lista que actuará como un contenedor para guardar todos los platillo que leamos de la base de datos
             List<Platillo> lista = new();
@@ -69,7 +72,12 @@ namespace DATOS
                         Precio = reader.GetDecimal(3),
                         Disponible = reader.GetBoolean(4),
                         CategoriaID = reader.GetInt32(5),
-                        NombreCategoria = reader.GetString(6)
+                        NombreCategoria = reader.GetString(6),
+
+                        // 🚨 MAPEO DE LA IMAGEN: La leemos de forma segura buscando la columna por su nombre
+                        ImagenBase64 = reader.GetSchemaTable().Select("ColumnName = 'ImagenBase64'").Length > 0 && !reader.IsDBNull(reader.GetOrdinal("ImagenBase64"))
+                                        ? reader.GetString(reader.GetOrdinal("ImagenBase64"))
+                                        : string.Empty
                     });
                 }
             }
@@ -77,7 +85,7 @@ namespace DATOS
         }
 
         //Metodo para obtener un platillo por ID
-        public Platillo LeerPorId(int id)
+        public virtual Platillo LeerPorId(int id)
         {
             Platillo platillo = null;
             using (SqlConnection con = new(_cadenaConexion))
@@ -99,7 +107,12 @@ namespace DATOS
                                 Precio = reader.GetDecimal(3),
                                 Disponible = reader.GetBoolean(4),
                                 CategoriaID = reader.GetInt32(5),
-                                NombreCategoria = reader.GetString(6)
+                                NombreCategoria = reader.GetString(6),
+
+                                // 🚨 MAPEO DE LA IMAGEN: Validamos que no sea nula en la base de datos y la cargamos por su nombre de columna
+                                ImagenBase64 = reader.GetSchemaTable().Select("ColumnName = 'ImagenBase64'").Length > 0 && !reader.IsDBNull(reader.GetOrdinal("ImagenBase64"))
+                                                ? reader.GetString(reader.GetOrdinal("ImagenBase64"))
+                                                : string.Empty
                             };
                         }
                     }
@@ -107,8 +120,9 @@ namespace DATOS
             }
             return platillo;
         }
+
         //Metodo Actualizar Platillos
-        public void Actualizar(int id, PlatilloDTO platillo)
+        public virtual void Actualizar(int id, PlatilloDTO platillo)
         {
             using (SqlConnection con = new(_cadenaConexion))
             {
@@ -122,13 +136,16 @@ namespace DATOS
                     cmd.Parameters.AddWithValue("@precio", platillo.Precio);
                     cmd.Parameters.AddWithValue("@categoriaID", platillo.CategoriaID);
                     cmd.Parameters.AddWithValue("@disponible", platillo.Disponible);
+
+                    cmd.Parameters.AddWithValue("@imagenBase64", platillo.ImagenBase64 ?? (object)DBNull.Value);
+
                     cmd.ExecuteNonQuery();
                 }
             }
         }
 
         //Metodo Eliminar Platillos
-        public void Eliminar(int id, bool disponible)
+        public virtual void Eliminar(int id, bool disponible)
         {
             using (SqlConnection con = new(_cadenaConexion))
             {

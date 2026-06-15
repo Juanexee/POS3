@@ -14,8 +14,11 @@ namespace ENTIDADES
         public string Descripcion { get; set; } = string.Empty;
         public decimal Precio { get; set; }
         public int CategoriaID { get; set; }
-        public bool Disponible { get; set; }      
+        public bool Disponible { get; set; }
         public string NombreCategoria { get; set; } = string.Empty;
+
+        //AGREGANDO ESTA LÍNEA PARA GUARDAR LAS IMAGENES EN LA BD 
+        public string ImagenBase64 { get; set; } = string.Empty;
     }
 
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,7 +14,8 @@ namespace ENTIDADES
         public string Estado { get; set; }
 
         // Información del cajero/usuario
-        public int UsuarioID { get; set; }
-        public string NombreCajero { get; set; }
+        public int? UsuarioID { get; set; }
+        public string? NombreCajero { get; set; }
+        public int MesaID { get; set; }
     }
 }

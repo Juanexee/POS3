@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -24,5 +24,8 @@ namespace DATOS
         List<PedidoAgrupadoDTO> ListarPedidosAgrupados();
 
         bool ActualizarEstadoMasivo(string ids, string nuevoEstado);
+
+        bool ActualizarEstadoVenta(int ventaId, string nuevoEstado);
+        int ObtenerVentaActivaPorMesa(int mesaId);
     }
 }

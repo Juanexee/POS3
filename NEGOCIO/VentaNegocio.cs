@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -48,6 +48,9 @@ namespace NEGOCIO
             decimal totalCalculado = 0;
             foreach (var detalle in venta.DetalleVenta)
             {
+                if (detalle.Cantidad <= 0)
+                    throw new ArgumentException("La cantidad debe ser mayor a cero.");
+
                 var platilloInfo = _platilloDatos.LeerPorId(detalle.PlatilloID);
                 if (platilloInfo == null)
                     throw new Exception($"El platillo ID {detalle.PlatilloID} no existe.");
@@ -135,6 +138,28 @@ namespace NEGOCIO
             // Llamamos a la capa de datos
             // Nota: Necesitaremos crear este método en IVentaDatos/VentaDatos también
             return _ventaDatos.ActualizarEstadoMasivo(ids, nuevoEstado);
+        }
+
+        public bool ActualizarEstadoVenta(int ventaId, string nuevoEstado)
+        {
+            if (ventaId <= 0) throw new ArgumentException("El ID de la venta debe ser un valor positivo.");
+            
+            bool result = _ventaDatos.ActualizarEstadoVenta(ventaId, nuevoEstado);
+            if (result && nuevoEstado == "Pagada")
+            {
+                var venta = _ventaDatos.SeleccionarVentaConDetalle(ventaId);
+                if (venta != null && venta.SesionID.HasValue && venta.SesionID > 0)
+                {
+                    _sesionDatos.FinalizarSesion(venta.SesionID.Value);
+                }
+            }
+            return result;
+        }
+
+        public int ObtenerVentaActivaPorMesa(int mesaId)
+        {
+            if (mesaId <= 0) throw new ArgumentException("El ID de la mesa debe ser un valor positivo.");
+            return _ventaDatos.ObtenerVentaActivaPorMesa(mesaId);
         }
     }
 }

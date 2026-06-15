@@ -1,4 +1,4 @@
-using System.Text;
+ï»¿using System.Text;
 using DATOS;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -22,13 +22,13 @@ namespace API_REST_V3
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Validar la cadena de conexión antes
+            // Validar la cadena de conexiï¿½n antes
             var connectionString = builder.Configuration.GetConnectionString("RestauranteDB");
             if (string.IsNullOrWhiteSpace(connectionString))
-                throw new InvalidOperationException("La cadena de conexión 'RestauranteDB' no está configurada.");
+                throw new InvalidOperationException("La cadena de conexiï¿½n 'RestauranteDB' no estï¿½ configurada.");
 
             // -----------------------
-            // Bindear configuración Jwt a POCO y validarla
+            // Bindear configuraciï¿½n Jwt a POCO y validarla
             // -----------------------
             builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 
@@ -37,10 +37,10 @@ namespace API_REST_V3
             var jwtSettings = jwtSection.Get<JwtSettings>();
 
             if (jwtSettings == null)
-                throw new InvalidOperationException("Se requiere la sección 'Jwt' en appsettings.json.");
+                throw new InvalidOperationException("Se requiere la secciï¿½n 'Jwt' en appsettings.json.");
 
             if (string.IsNullOrWhiteSpace(jwtSettings.Key))
-                throw new InvalidOperationException("La clave 'Jwt:Key' no está configurada. Revisa appsettings.json.");
+                throw new InvalidOperationException("La clave 'Jwt:Key' no estï¿½ configurada. Revisa appsettings.json.");
 
             // -----------------------
             // Registrar Capa de Datos (DATOS)
@@ -53,7 +53,7 @@ namespace API_REST_V3
             builder.Services.AddScoped<UnidadMedidaDatos>(s => new UnidadMedidaDatos(connectionString));
             builder.Services.AddScoped<RolesDatos>(s => new RolesDatos(connectionString));
 
-            // CORRECCIÓN: Unificamos los platillos para evitar registrar PlatillosDatos 3 veces de forma diferente
+            // CORRECCIï¿½N: Unificamos los platillos para evitar registrar PlatillosDatos 3 veces de forma diferente
             builder.Services.AddScoped<PlatillosDatos>(s => new PlatillosDatos(connectionString));
             builder.Services.AddScoped<IPlatillosDatos, PlatillosDatos>(s => new PlatillosDatos(connectionString));
 
@@ -77,7 +77,7 @@ namespace API_REST_V3
             // NUEVO: Registramos PlatilloNegocio para que funcione con tu PlatilloController correctamente
             builder.Services.AddScoped<PlatilloNegocio>();
 
-            // Registrar VentaNegocio con su constructor explícito por seguridad de dependencias cruzadas
+            // Registrar VentaNegocio con su constructor explï¿½cito por seguridad de dependencias cruzadas
             builder.Services.AddScoped<IVentaNegocio, VentaNegocio>(s =>
                  new VentaNegocio(
                    s.GetRequiredService<IVentaDatos>(),
@@ -87,12 +87,12 @@ namespace API_REST_V3
              );
 
             // -----------------------
-            // Configuración de Servicios Básicos e Infraestructura
+            // Configuraciï¿½n de Servicios Bï¿½sicos e Infraestructura
             // -----------------------
             builder.Services.AddSignalR();
             builder.Services.AddControllers();
 
-            // Configuración de autenticación JWT
+            // Configuraciï¿½n de autenticaciï¿½n JWT
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -115,7 +115,7 @@ namespace API_REST_V3
                 {
                     OnAuthenticationFailed = ctx =>
                     {
-                        Console.WriteLine("Error de autenticación JWT: " + ctx.Exception?.Message);
+                        Console.WriteLine("Error de autenticaciï¿½n JWT: " + ctx.Exception?.Message);
                         return Task.CompletedTask;
                     },
                     OnTokenValidated = ctx =>
@@ -129,14 +129,15 @@ namespace API_REST_V3
 
             builder.Services.AddAuthorization();
 
-            // Configuración de CORS para el Frontend
+            // Configuraciï¿½n de CORS para el Frontend
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("PermitirFrontend", policy =>
                 {
-                    policy.AllowAnyOrigin()   // Permite que cualquier HTML abra la API
+                    policy.SetIsOriginAllowed(origin => true) // Permite cualquier origen compatible con credentials (SignalR)
                           .AllowAnyMethod()   // Permite GET, POST, PUT, DELETE
-                          .AllowAnyHeader();  // Permite enviar tokens JWT
+                          .AllowAnyHeader()   // Permite enviar tokens JWT
+                          .AllowCredentials(); // Requerido por SignalR para el transporte de credenciales
                 });
             });
 
@@ -177,7 +178,7 @@ namespace API_REST_V3
                     }
                 });
 
-                // === Documentación XML y anotaciones ===
+                // === Documentaciï¿½n XML y anotaciones ===
                 var xmlfile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlpath = Path.Combine(AppContext.BaseDirectory, xmlfile);
                 c.IncludeXmlComments(xmlpath, includeControllerXmlComments: true);

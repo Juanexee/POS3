@@ -1,4 +1,4 @@
-﻿// Archivo: Controllers/RecetasController.cs
+// Archivo: Controllers/RecetasController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using NEGOCIO;
@@ -10,7 +10,7 @@ namespace RestauranteAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize(Roles = "Administrador")] // Solo Admins gestionan recetas
+    [Authorize(Roles = "Administrador,Administrador3,El super admin,admin,Cocinero")] // Admins y Cocineros gestionan/leen recetas
     public class RecetasController : ControllerBase
     {
         private readonly RecetaNegocio _recetaNegocio;
@@ -65,6 +65,7 @@ namespace RestauranteAPI.Controllers
 
         // PUT: api/Recetas/{platilloID} (Para guardar o actualizar la receta completa)
         [HttpPut("{platilloID}")]
+        [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")] // Solo Admins modifican recetas
         public IActionResult GuardarReceta(int platilloID, [FromBody] List<RecetaBaseDTO> detalles)
         {
             if (!ModelState.IsValid)

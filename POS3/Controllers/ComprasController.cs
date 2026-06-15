@@ -1,4 +1,4 @@
-﻿// Archivo: Controllers/ComprasController.cs
+// Archivo: Controllers/ComprasController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using NEGOCIO;
@@ -11,7 +11,7 @@ namespace RestauranteAPI.Controllers
     
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Administrador")] // Solo el Administrador puede registrar compras
+    [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")] // Solo el Administrador puede registrar compras
     public class ComprasController : ControllerBase
     {
         private readonly CompraNegocio _compraNegocio;

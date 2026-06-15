@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.Contracts;
@@ -139,14 +139,27 @@ namespace DATOS
                     {
                         while (dr.Read())
                         {
+                            // La columna de fecha en algunos SP puede llamarse "fechaVenta" o "fecha_venta".
+                            DateTime fechaVenta;
+                            try
+                            {
+                                fechaVenta = dr.GetDateTime(dr.GetOrdinal("fechaVenta"));
+                            }
+                            catch (IndexOutOfRangeException)
+                            {
+                                // Fallback al nombre alternativo
+                                fechaVenta = dr.GetDateTime(dr.GetOrdinal("fecha_venta"));
+                            }
+
                             ventas.Add(new VentaListaDTO
                             {
                                 VentaID = dr.GetInt32(dr.GetOrdinal("ventaID")),
-                                UsuarioID = dr.GetInt32(dr.GetOrdinal("usuarioID")),
-                                NombreCajero = dr.GetString(dr.GetOrdinal("nombreCajero")),
-                                FechaVenta = dr.GetDateTime(dr.GetOrdinal("fechaVenta")),
+                                UsuarioID = dr.IsDBNull(dr.GetOrdinal("usuarioID")) ? (int?)null : dr.GetInt32(dr.GetOrdinal("usuarioID")),
+                                NombreCajero = dr.IsDBNull(dr.GetOrdinal("nombreCajero")) ? null : dr.GetString(dr.GetOrdinal("nombreCajero")),
+                                FechaVenta = fechaVenta,
                                 Total = dr.GetDecimal(dr.GetOrdinal("total")),
-                                Estado = dr.GetString(dr.GetOrdinal("estado"))
+                                Estado = dr.GetString(dr.GetOrdinal("estado")),
+                                MesaID = dr.GetInt32(dr.GetOrdinal("mesaID"))
                             });
                         }
                     }
@@ -199,7 +212,9 @@ namespace DATOS
                                 NombrePlatillo = dr["NombrePlatillo"].ToString(),
                                 CantidadTotal = Convert.ToInt32(dr["CantidadTotal"]),
                                 FechaPrimerPedido = Convert.ToDateTime(dr["FechaPrimerPedido"]),
-                                IdsRelacionados = dr["IdsRelacionados"].ToString()
+                                IdsRelacionados = dr["IdsRelacionados"].ToString(),
+                                NumerosMesas = dr["NumerosMesas"].ToString(),
+                                Estado = dr["Estado"].ToString()
                             });
                         }
                     }
@@ -246,6 +261,33 @@ namespace DATOS
             }
             return respuesta;
         }
+        public bool ActualizarEstadoVenta(int ventaId, string nuevoEstado)
+        {
+            using (SqlConnection con = new(_cadenaConexion))
+            {
+                string query = "UPDATE Ventas SET estado = @nuevoEstado WHERE ventaID = @ventaId";
+                using (SqlCommand cmd = new(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@nuevoEstado", nuevoEstado);
+                    cmd.Parameters.AddWithValue("@ventaId", ventaId);
+                    con.Open();
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+        }
 
+        public int ObtenerVentaActivaPorMesa(int mesaId)
+        {
+            using (var conexion = new SqlConnection(_cadenaConexion))
+            {
+                string query = "SELECT TOP 1 ventaID FROM Ventas WHERE mesaID = @mesaId AND estado = 'Pendiente' ORDER BY ventaID DESC";
+                var comando = new SqlCommand(query, conexion);
+                comando.Parameters.AddWithValue("@mesaId", mesaId);
+
+                conexion.Open();
+                var resultado = comando.ExecuteScalar();
+                return resultado != null ? Convert.ToInt32(resultado) : 0;
+            }
+        }
     }
 }

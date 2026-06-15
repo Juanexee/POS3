@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -150,7 +150,7 @@ namespace DATOS
             cmd.Parameters.AddWithValue("@activo", activo);
 
             // El parámetro requerido por tu SQL
-            cmd.Parameters.AddWithValue("@usuarioID", usuarioIDLogueado);
+            cmd.Parameters.AddWithValue("@usuarioModificacionID", usuarioIDLogueado);
 
             cmd.ExecuteNonQuery();
         }

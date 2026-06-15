@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -20,5 +20,7 @@ namespace ENTIDADES
 
         // El campo Disponible se omite en POST, pero se usa en PUT
         public bool Disponible { get; set; } = true;
+
+        public string ImagenBase64 { get; set; } = string.Empty;
     }
 }

@@ -1,81 +1,46 @@
-﻿using DATOS;
+using DATOS;
 using ENTIDADES;
-using NEGOCIO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
+
 
 namespace POS3.Controllers
+
 {
     [ApiController]
     [Route("[controller]")]
     public class PlatilloController : ControllerBase
     {
-        private readonly PlatilloNegocio _platilloNegocio;
-
-        // Inyección de dependencias profesional a través de la arquitectura de capas
-        public PlatilloController(PlatilloNegocio platilloNegocio)
+        //Declara las intancia de datos
+        private readonly PlatillosDatos _platillosDatos;
+        // Constructor que recibe la configuración para obtener la cadena de conexión
+        public PlatilloController(IConfiguration configuration)
         {
-            _platilloNegocio = platilloNegocio;
-        }
-
-        /// <summary>
-        /// Ver todos los platillos que se han insertado
-        /// </summary>
-        [HttpGet("Leer")]
-        [AllowAnonymous] // <--- SOLUCIÓN AL 401: Permite leer el menú sin necesidad de Token JWT
-        public IActionResult LeerPlatillos()
-        {
-            try
-            {
-                var lista = _platilloNegocio.ListarTodosLosPlatillos();
-                return Ok(lista);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = "Fallo al leer los datos en la base de datos: " + ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Obtener un platillo específico por su ID
-        /// </summary>
-        [HttpGet("{id}")]
-        [AllowAnonymous] // También abierto para que el cliente escanee y busque por ID
-        public IActionResult LeerPorId(int id)
-        {
-            try
-            {
-                var platillo = _platilloNegocio.ObtenerPlatilloPorId(id);
-                if (platillo == null)
-                {
-                    return NotFound(new { mensaje = $"Platillo con ID {id} no encontrado." });
-                }
-                return Ok(platillo);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = "Error al obtener el platillo: " + ex.Message });
-            }
+            var cadenaConexion = configuration.GetConnectionString("RestauranteDB");
+            _platillosDatos = new PlatillosDatos(cadenaConexion);
         }
 
         /// <summary>
         /// Insertar un nuevo platillo
         /// </summary>
+        /// <param name="platilloDto"></param>
+        /// <returns></returns>
+        /// <response code="201"> El nuevo platillo se creo con exito</response>
+        /// <response code="400">Datos invalidos o incompletos</response>
+        /// <response code="500">Fallo en el servidor</response>
+
+
+
+
+        //EndPoint Para Insertar un nuevo platillo
         [HttpPost("Insertar")]
-        // Si quieres que solo los administradores inserten platillos, quitas el AllowAnonymous y dejas el Authorize general de la API
+        [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")]
         public IActionResult InsertarPlatillo([FromBody] PlatilloDTO platilloDto)
         {
             try
             {
-                if (platilloDto == null) return BadRequest("Datos inválidos.");
-
-                var resultado = _platilloNegocio.RegistrarPlatillo(platilloDto);
-
-                if (resultado.Success)
-                    return Ok(resultado);
-
-                return BadRequest(resultado);
+                _platillosDatos.Insertar(platilloDto);
+                return Ok(new { mensaje = "Rol insertado correctamente" });
             }
             catch (Exception ex)
             {
@@ -84,26 +49,124 @@ namespace POS3.Controllers
         }
 
         /// <summary>
-        /// Cambiar la disponibilidad del platillo
+        /// Ver todo los platillos que se han insertado 
         /// </summary>
-        [HttpPut("{id}/Disponibilidad")]
-        public IActionResult DisponibilidadPlatillo(int id, [FromQuery] bool disponible)
+        /// <returns></returns>
+        /// <response code="200">Devuelve una lista de los platillos regristrado</response>
+        /// <response code="500">Fallo al leer los datos en la base de datos</response>
+
+
+
+
+        //[Authorize(Roles = "Administrador")] modificar por el momento para que cualquier usuario pueda ver los platillos registrados
+        //EndPoint para leer todos los platillos
+        [HttpGet("Leer")]
+        public IActionResult LeerTodos()
         {
             try
             {
-                var platillo = _platilloNegocio.ObtenerPlatilloPorId(id);
-                if (platillo == null)
+                var platillos = _platillosDatos.Leer();
+                return Ok(platillos);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Error al obtener platillos: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Actualiazar un platillo que se a insertado anteriormente 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="platilloDto"></param>
+        /// <returns></returns>
+        /// <response code="200"> El platillo se actualizo correctamente</response>
+        /// <response code="404"> El paltillo con el id especificado nose encontro</response>
+        /// <response code="500"> Fallo al intenta aplicar los cambios</response>
+
+
+
+
+
+
+        [HttpPut("{id}/Actualizar")] // Ruta más simple
+        [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")]
+        public IActionResult ActualizarPlatillo(int id, [FromBody] PlatilloDTO platilloDto)
+        {
+            try
+            {
+                var platilloExistente = _platillosDatos.LeerPorId(id);
+                if (platilloExistente == null)
                 {
                     return NotFound(new { mensaje = $"Platillo con ID {id} no encontrado." });
                 }
 
-                _platilloNegocio.CambiarDisponibilidad(id, disponible);
+                _platillosDatos.Actualizar(id, platilloDto);
+                return Ok(new { mensaje = "Platillo actualizado correctamente." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Verificar la disponibilidad del platillo 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="disponible"></param>
+        /// <returns></returns>
+        /// <response code="200">El estado de disponibilidad se ha cambiado con exito</response>
+
+
+
+        [HttpPut("{id}/Disponibilidad")]
+        [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")]
+        public IActionResult CambiarDisponibilidad(int id, [FromQuery] bool disponible)
+        {
+            try
+            {
+                var platilloExistente = _platillosDatos.LeerPorId(id);
+                if (platilloExistente == null)
+                {
+                    return NotFound(new { mensaje = $"Platillo con ID {id} no encontrado." });
+                }
+
+                _platillosDatos.Eliminar(id, disponible);
                 string estado = disponible ? "disponible" : "agotado";
                 return Ok(new { mensaje = $"Platillo ID {id} marcado como {estado} correctamente." });
             }
             catch (Exception ex)
             {
                 return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Obtener un platillo específico por su ID
+        /// </summary>
+        /// <param name="id">ID único del platillo</param>
+        /// <returns></returns>
+        /// <response code="200">Devuelve los datos del platillo solicitado</response>
+        /// <response code="404">El platillo con el ID especificado no se encontró</response>
+        /// <response code="500">Fallo al leer los datos en la base de datos</response>
+
+        [HttpGet("{id}")]
+        public IActionResult LeerPorId(int id)
+        {
+            try
+            {
+                var platillo = _platillosDatos.LeerPorId(id);
+                if (platillo == null)
+                {
+                    return NotFound(new { mensaje = $"Platillo con ID {id} no encontrado." });
+                }
+
+                return Ok(platillo);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Error al obtener el platillo: " + ex.Message });
             }
         }
     }

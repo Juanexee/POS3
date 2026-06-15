@@ -1,4 +1,4 @@
-﻿// Archivo: Controllers/UnidadesMedidaController.cs
+// Archivo: Controllers/UnidadesMedidaController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using NEGOCIO;
@@ -52,8 +52,7 @@ namespace RestauranteAPI.Controllers
 
         // POST: api/UnidadesMedida (Creación restringida)
         [HttpPost("Insertar")]
-        // [Authorize(Roles = "Administrador")] // Solo el administrador puede crear nuevas unidades
-        [AllowAnonymous]
+        [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")] // Solo el administrador puede crear nuevas unidades
         public IActionResult CrearUnidad([FromBody] CrearUnidadMedidaDTO unidad)
         {
             if (!ModelState.IsValid)

@@ -1,4 +1,4 @@
-﻿// Archivo: Controllers/ProveedoresController.cs
+// Archivo: Controllers/ProveedoresController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using NEGOCIO;
@@ -58,8 +58,7 @@ namespace RestauranteAPI.Controllers
 
         // POST: api/Proveedores (Creación restringida)
         [HttpPost]
-        //[Authorize(Roles = "Administrador")] // Solo el administrador puede registrar nuevos proveedores
-        [AllowAnonymous]
+        [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")] // Solo el administrador puede registrar nuevos proveedores
         public IActionResult CrearProveedor([FromBody] CrearProveedorDTO proveedor)
         {
             if (!ModelState.IsValid)

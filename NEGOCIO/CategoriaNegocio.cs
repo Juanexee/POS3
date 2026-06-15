@@ -1,4 +1,4 @@
-﻿using DATOS;
+using DATOS;
 using ENTIDADES;
 using System;
 using System.Collections.Generic;
@@ -24,6 +24,13 @@ namespace NEGOCIO
             if (string.IsNullOrWhiteSpace(nuevaCategoria.Nombre))
             {
                 return new RespuestaProceso { Success = false, Message = "El nombre de la categoría es requerido." };
+            }
+
+            // Validación de nombres duplicados (RF1)
+            bool existe = _categoriasDatos.LeerTodos().Any(c => c.Nombre.Trim().Equals(nuevaCategoria.Nombre.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (existe)
+            {
+                return new RespuestaProceso { Success = false, Message = "Ya existe una categoría con este nombre." };
             }
 
             _categoriasDatos.Insertar(nuevaCategoria);
@@ -62,6 +69,13 @@ namespace NEGOCIO
                 if (string.IsNullOrWhiteSpace(categoriaDto.Nombre))
                 {
                     return new RespuestaProceso { Success = false, Message = "El nombre de la categoría no puede estar vacío." };
+                }
+
+                // Validación de nombres duplicados (RF1) - ignoramos el ID propio
+                bool existe = _categoriasDatos.LeerTodos().Any(c => c.Nombre.Trim().Equals(categoriaDto.Nombre.Trim(), StringComparison.OrdinalIgnoreCase) && c.CategoriaID != id);
+                if (existe)
+                {
+                    return new RespuestaProceso { Success = false, Message = "Ya existe otra categoría con este nombre." };
                 }
 
                 // Ejecutamos la actualización en la capa de datos

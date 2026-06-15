@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -11,7 +11,6 @@ namespace ENTIDADES
     {
         public int DetalleVentaID { get; set; }
 
-        [Required(ErrorMessage = "El Id de la venta es requierido ")]
         public int VentaID { get; set; }
 
         [Required(ErrorMessage = "El Id Producto es obligatorio")]

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 using ENTIDADES.InsumosDTO;
 using Microsoft.AspNetCore.Authorization;
@@ -10,7 +10,7 @@ namespace RestauranteAPI.Controllers
     [Route("api/[controller]")]
     [ApiController]
     
-    //[Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "Administrador,Administrador3,El super admin,admin,Cocinero")]
     public class InsumosController : ControllerBase
     {
         private readonly InsumoNegocio _insumoNegocio;
@@ -31,7 +31,6 @@ namespace RestauranteAPI.Controllers
 
         // GET: api/Insumos (Lectura de todos los insumos)
         [HttpGet("Leer")]
-        [AllowAnonymous]
         public IActionResult ObtenerInsumos()
         {
             try
@@ -56,7 +55,7 @@ namespace RestauranteAPI.Controllers
 
         // POST: api/Insumos (Para crear un nuevo insumo)
         [HttpPost("Insertar")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")]
         public IActionResult CrearInsumo([FromBody] CrearActualizarInsumoDTO insumo)
         {
             // 1. Validar el DTO (ModelState)

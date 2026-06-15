@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -17,7 +17,7 @@ namespace ENTIDADES
         public int? ClienteID { get; set; }
         public DateTime Fecha { get; set; } // <-- Agregar esta propiedad
         public decimal Total { get; set; }
-        public string Estado { get; set; } 
+        public string? Estado { get; set; } 
         public List<DetalleVenta> DetalleVenta { get; set; }
 
         public bool EsPagoFinal { get; set; }

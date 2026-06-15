@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,6 +21,7 @@ namespace NEGOCIO
         List<PedidoAgrupadoDTO> ObtenerPedidosParaCocina();
 
         bool ActualizarEstadoMasivo(string ids, string nuevoEstado);
+        bool ActualizarEstadoVenta(int ventaId, string nuevoEstado);
+        int ObtenerVentaActivaPorMesa(int mesaId);
     }
-
 }

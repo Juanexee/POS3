@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.Data.SqlClient;
 using ENTIDADES;
 
@@ -18,7 +18,7 @@ namespace DATOS
 
         //Metodo abrir seseion 
 
-        public int AbrirSesion(int mesaId)
+        public virtual int AbrirSesion(int mesaId)
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
@@ -34,7 +34,7 @@ namespace DATOS
             }
         }
 
-        public bool ExisteSesionActiva(int mesaId)
+        public virtual bool ExisteSesionActiva(int mesaId)
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
@@ -48,7 +48,7 @@ namespace DATOS
         }
 
         // este metodo sirve para buscar si existe una sesion con estado activopara la mesa
-        public int? ObtenerSesionActiva(int mesaId)
+        public virtual int? ObtenerSesionActiva(int mesaId)
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
@@ -63,7 +63,7 @@ namespace DATOS
             }
         }
 
-        public bool ValidarSesionActiva(int sesionId)
+        public virtual bool ValidarSesionActiva(int sesionId)
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
@@ -82,7 +82,7 @@ namespace DATOS
         //METODO FINALIZAR SESION, ESTE METODO SERVIRA PARA QUE CUANDO EL CLIENTE PAGUE LA SESION SEA FINALIZADA 
 
 
-        public bool FinalizarSesion(int sesionId)
+        public virtual bool FinalizarSesion(int sesionId)
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
@@ -96,7 +96,7 @@ namespace DATOS
             }
         }
 
-        public bool EsMesaDisponible(int mesaId)
+        public virtual bool EsMesaDisponible(int mesaId)
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
@@ -109,7 +109,7 @@ namespace DATOS
             }
         }
 
-        public bool EjecutarCambioMesa(int sesionId, int nuevaMesaId)
+        public virtual bool EjecutarCambioMesa(int sesionId, int nuevaMesaId)
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
@@ -127,7 +127,7 @@ namespace DATOS
             }
         }
 
-        public string ObtenerEstadoSesion(int sesionId)
+        public virtual string ObtenerEstadoSesion(int sesionId)
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
@@ -141,14 +141,14 @@ namespace DATOS
             }
         }
 
-        public bool CambiarEstadoPedidos(List<int> ids, string nuevoEstado)
+        public virtual bool CambiarEstadoPedidos(List<int> ids, string nuevoEstado)
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
                 // Convertimos la lista [1,2,3] en una cadena "1,2,3" para el SQL
                 string idsFormateados = string.Join(",", ids);
 
-                string query = $"UPDATE Pedidos SET estado = @estado WHERE pedidoID IN ({idsFormateados})";
+                string query = $"UPDATE DetalleVenta SET estadoCocinero = @estado WHERE detalleID IN ({idsFormateados})";
 
                 var comando = new SqlCommand(query, conexion);
                 comando.Parameters.AddWithValue("@estado", nuevoEstado);
@@ -179,7 +179,9 @@ namespace DATOS
                             NombrePlatillo = reader["NombrePlatillo"].ToString(),
                             CantidadTotal = Convert.ToInt32(reader["CantidadTotal"]),
                             IdsRelacionados = reader["IdsRelacionados"].ToString(),
-                            FechaPrimerPedido = Convert.ToDateTime(reader["FechaPrimerPedido"])
+                            FechaPrimerPedido = Convert.ToDateTime(reader["FechaPrimerPedido"]),
+                            NumerosMesas = reader["NumerosMesas"].ToString(),
+                            Estado = reader["Estado"].ToString()
                         });
                     }
                 }
@@ -187,14 +189,14 @@ namespace DATOS
             return lista;
         }
 
-        public List<string> ObtenerEstadosDePedidos(List<int> ids)
+        public virtual List<string> ObtenerEstadosDePedidos(List<int> ids)
         {
             var estados = new List<string>();
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
                 string idsFormateados = string.Join(",", ids);
                 // Consulta limpia para traer los estados actuales en base a los IDs del lote
-                string query = $"SELECT estado FROM Pedidos WHERE pedidoID IN ({idsFormateados})";
+                string query = $"SELECT estadoCocinero FROM DetalleVenta WHERE detalleID IN ({idsFormateados})";
 
                 var comando = new SqlCommand(query, conexion);
                 conexion.Open();
@@ -203,7 +205,7 @@ namespace DATOS
                 {
                     while (reader.Read())
                     {
-                        estados.Add(reader["estado"].ToString());
+                        estados.Add(reader["estadoCocinero"].ToString());
                     }
                 }
             }

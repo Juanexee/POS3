@@ -1,4 +1,4 @@
-﻿using Xunit;
+using Xunit;
 using Moq;
 using NEGOCIO;
 using DATOS; // Para IVentaDatos
@@ -13,6 +13,8 @@ namespace POSS.TESTS
     {
         // Declaramos el Mock de la interfaz de datos
         private readonly Mock<IVentaDatos> _mockVentaDatos;
+        private readonly Mock<SesionDatos> _mockSesionDatos;
+        private readonly Mock<PlatillosDatos> _mockPlatillosDatos;
 
         // Declaramos la clase real de negocio que vamos a probar
         private readonly VentaNegocio _ventaNegocio;
@@ -21,9 +23,11 @@ namespace POSS.TESTS
         {
             // Inicializar el Mock de la interfaz
             _mockVentaDatos = new Mock<IVentaDatos>();
+            _mockSesionDatos = new Mock<SesionDatos>("fake_connection_string");
+            _mockPlatillosDatos = new Mock<PlatillosDatos>("fake_connection_string");
 
             // Instanciar la clase de Negocio, inyectando el objeto simulado
-            _ventaNegocio = new VentaNegocio(_mockVentaDatos.Object);
+            _ventaNegocio = new VentaNegocio(_mockVentaDatos.Object, _mockSesionDatos.Object, _mockPlatillosDatos.Object);
         }
 
         // --- Aquí vamos a empezar a escribir los [Fact] ---
@@ -34,6 +38,10 @@ namespace POSS.TESTS
         {
             // 1. ARRANGE (Preparación) 
             int idVentaEsperado = 5;
+
+            // Mock Platillo
+            _mockPlatillosDatos.Setup(m => m.LeerPorId(1))
+                               .Returns(new Platillo { PlatilloID = 1, Precio = 10.00M });
 
             // 1. Crear el DetalleVenta con la cantidad INVÁLIDA (negativa)
             var detallesInvalidos = new List<DetalleVenta>
@@ -97,15 +105,19 @@ namespace POSS.TESTS
             // 1. ARRANGE (Preparación)
             int idVentaEsperado = 5;
 
+            // Mock Platillo
+            _mockPlatillosDatos.Setup(m => m.LeerPorId(1))
+                               .Returns(new Platillo { PlatilloID = 1, Precio = 12.50M });
+
             var detallesValidos = new List<DetalleVenta>
-    {
-        new DetalleVenta
-        {
-            PlatilloID = 1,
-            Cantidad = 2,
-            PrecioUnitario = 12.50M
-        }
-    };
+            {
+                new DetalleVenta
+                {
+                    PlatilloID = 1,
+                    Cantidad = 2,
+                    PrecioUnitario = 12.50M
+                }
+            };
 
             var ventaValida = new Venta
             {
@@ -120,12 +132,12 @@ namespace POSS.TESTS
                            .Returns(idVentaEsperado);
 
             // 2. ACT (Actuación)
-            int resultadoID = _ventaNegocio.RegistrarVenta(ventaValida);
+            RespuestaRegistroVenta resultado = _ventaNegocio.RegistrarVenta(ventaValida);
 
             // 3. ASSERT (Verificación)
 
             // ✅ Verificar 1: Que el ID devuelto por Negocio sea el ID simulado por Datos (5)
-            Assert.Equal(idVentaEsperado, resultadoID);
+            Assert.Equal(idVentaEsperado, resultado.VentaID);
 
             // ✅ Verificar 2: Que el método de la Capa de Datos Insertar() fue llamado exactamente una vez.
             _mockVentaDatos.Verify(m =>
