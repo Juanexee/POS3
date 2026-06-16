@@ -1,4 +1,4 @@
-﻿using DATOS;
+using DATOS;
 using ENTIDADES;
 using System;
 using System.Collections.Generic;
@@ -71,7 +71,18 @@ namespace NEGOCIO
         public RespuestaProceso DarDeBajaMesa(int mesaId)
         {
             // Regla de negocio: No se puede eliminar una mesa si está ocupada
-            // (Aquí podrías inyectar SesionDatos para verificar si tiene sesiones activas)
+            var mesas = _mesaDatos.ListarMesas();
+            var mesa = mesas.Find(m => m.MesaID == mesaId);
+
+            if (mesa == null)
+            {
+                return new RespuestaProceso { Success = false, Message = "La mesa no existe o ya está inactiva." };
+            }
+
+            if (mesa.SesionID.HasValue)
+            {
+                return new RespuestaProceso { Success = false, Message = "No se puede dar de baja una mesa con una sesión activa o que esté ocupada." };
+            }
 
             bool elimino = _mesaDatos.EliminarMesa(mesaId);
 

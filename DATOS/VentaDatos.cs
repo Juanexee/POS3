@@ -137,30 +137,38 @@ namespace DATOS
                     cmd.CommandType = CommandType.StoredProcedure;
                     using (var dr = cmd.ExecuteReader())
                     {
-                        while (dr.Read())
+                        if (dr.HasRows)
                         {
-                            // La columna de fecha en algunos SP puede llamarse "fechaVenta" o "fecha_venta".
-                            DateTime fechaVenta;
+                            int fechaVentaOrdinal = -1;
                             try
                             {
-                                fechaVenta = dr.GetDateTime(dr.GetOrdinal("fechaVenta"));
+                                fechaVentaOrdinal = dr.GetOrdinal("fechaVenta");
                             }
                             catch (IndexOutOfRangeException)
                             {
-                                // Fallback al nombre alternativo
-                                fechaVenta = dr.GetDateTime(dr.GetOrdinal("fecha_venta"));
+                                fechaVentaOrdinal = dr.GetOrdinal("fecha_venta");
                             }
 
-                            ventas.Add(new VentaListaDTO
+                            int ventaIDOrdinal = dr.GetOrdinal("ventaID");
+                            int usuarioIDOrdinal = dr.GetOrdinal("usuarioID");
+                            int nombreCajeroOrdinal = dr.GetOrdinal("nombreCajero");
+                            int totalOrdinal = dr.GetOrdinal("total");
+                            int estadoOrdinal = dr.GetOrdinal("estado");
+                            int mesaIDOrdinal = dr.GetOrdinal("mesaID");
+
+                            while (dr.Read())
                             {
-                                VentaID = dr.GetInt32(dr.GetOrdinal("ventaID")),
-                                UsuarioID = dr.IsDBNull(dr.GetOrdinal("usuarioID")) ? (int?)null : dr.GetInt32(dr.GetOrdinal("usuarioID")),
-                                NombreCajero = dr.IsDBNull(dr.GetOrdinal("nombreCajero")) ? null : dr.GetString(dr.GetOrdinal("nombreCajero")),
-                                FechaVenta = fechaVenta,
-                                Total = dr.GetDecimal(dr.GetOrdinal("total")),
-                                Estado = dr.GetString(dr.GetOrdinal("estado")),
-                                MesaID = dr.GetInt32(dr.GetOrdinal("mesaID"))
-                            });
+                                ventas.Add(new VentaListaDTO
+                                {
+                                    VentaID = dr.GetInt32(ventaIDOrdinal),
+                                    UsuarioID = dr.IsDBNull(usuarioIDOrdinal) ? (int?)null : dr.GetInt32(usuarioIDOrdinal),
+                                    NombreCajero = dr.IsDBNull(nombreCajeroOrdinal) ? null : dr.GetString(nombreCajeroOrdinal),
+                                    FechaVenta = dr.GetDateTime(fechaVentaOrdinal),
+                                    Total = dr.GetDecimal(totalOrdinal),
+                                    Estado = dr.GetString(estadoOrdinal),
+                                    MesaID = dr.GetInt32(mesaIDOrdinal)
+                                });
+                            }
                         }
                     }
                 }

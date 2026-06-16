@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.Data.SqlClient;
 using ENTIDADES; // Asegúrate de tener una entidad 'Mesa' en este namespace
 
@@ -89,10 +89,12 @@ namespace DATOS
         {
             using (var conexion = new SqlConnection(_cadenaConexion))
             {
-                // Podrías crear un SP llamado sp_EliminarMesa
-                string query = "DELETE FROM Mesas WHERE mesaID = @id";
-                var comando = new SqlCommand(query, conexion);
-                comando.Parameters.AddWithValue("@id", mesaId);
+                var comando = new SqlCommand("sp_EliminarMesa", conexion)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                comando.Parameters.AddWithValue("@mesaID", mesaId);
+                comando.Parameters.AddWithValue("@activo", false);
 
                 conexion.Open();
                 return comando.ExecuteNonQuery() > 0;
