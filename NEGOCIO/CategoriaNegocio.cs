@@ -56,6 +56,25 @@ namespace NEGOCIO
             }
         }
 
+        public RespuestaProceso ActivarCategoria(int id)
+        {
+            try
+            {
+                bool exito = _categoriasDatos.Activar(id);
+
+                if (exito)
+                {
+                    return new RespuestaProceso { Success = true, Message = "La categoría ha sido activada correctamente." };
+                }
+
+                return new RespuestaProceso { Success = false, Message = "La categoría solicitada no existe." };
+            }
+            catch (Exception ex)
+            {
+                return new RespuestaProceso { Success = false, Message = "Error en el procesamiento de negocio: " + ex.Message };
+            }
+        }
+
         // ---------- EDITAR / ACTUALIZAR CATEGORÍA ----------
         public RespuestaProceso ModificarCategoria(int id, CategoriaDTO categoriaDto)
         {

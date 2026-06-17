@@ -80,6 +80,30 @@ public class CategoriaController : ControllerBase
     }
 
     /// <summary>
+    /// Activa una categoría desactivada
+    /// </summary>
+    [HttpPut("Activar/{id}")]
+    [Authorize(Roles = "Administrador,Administrador3,El super admin,admin")]
+    public IActionResult Activar(int id)
+    {
+        try
+        {
+            var resultado = _categoriaNegocio.ActivarCategoria(id);
+
+            if (resultado.Success)
+            {
+                return Ok(resultado);
+            }
+
+            return BadRequest(resultado);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Fallo crítico en el servidor: " + ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Actualizar una categoría existente por su ID
     /// </summary>
     [HttpPut("Actualizar/{id}")]

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -49,7 +49,8 @@ namespace DATOS
                             lista.Add(new Categoria
                             {
                                 CategoriaID = reader.GetInt32(0),
-                                Nombre = reader.GetString(1)
+                                Nombre = reader.GetString(1),
+                                Activo = reader.FieldCount > 2 ? (reader.IsDBNull(2) ? true : reader.GetBoolean(2)) : true
                             });
                         }
                     }
@@ -97,6 +98,21 @@ namespace DATOS
                     cmd.Parameters.AddWithValue("@categoriaID", id);
                     cmd.Parameters.AddWithValue("@nombre", categoria.Nombre);
                     cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        // ---------- ACTIVAR CATEGORÍA ----------
+        public bool Activar(int id)
+        {
+            using (SqlConnection con = new(_cadenaConexion))
+            {
+                con.Open();
+                string queryUpdate = "UPDATE Categorias SET activo = 1 WHERE categoriaID = @id";
+                using (SqlCommand cmd = new(queryUpdate, con))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    return cmd.ExecuteNonQuery() > 0;
                 }
             }
         }
