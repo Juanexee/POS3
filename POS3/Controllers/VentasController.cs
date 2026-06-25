@@ -28,6 +28,16 @@ namespace POS4.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
+            // Si es un pedido presencial (mesero/cajero) y no se especificó UsuarioID, intentamos resolverlo del token JWT
+            if (venta.TipoPedido != "QR" && (venta.UsuarioID == null || venta.UsuarioID <= 0))
+            {
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdClaim, out int tokenUsuarioID))
+                {
+                    venta.UsuarioID = tokenUsuarioID;
+                }
+            }
+
             try
             {
                 // 1. Ejecutamos la lógica de negocio para guardar en la BD

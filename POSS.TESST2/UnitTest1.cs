@@ -20,18 +20,28 @@ namespace POSS.TESST2
                 {
                     conn.Open();
                     
-                    sb.AppendLine("TABLE TYPES:");
+                    sb.AppendLine("sp_InsertarDetalleVenta_Transactional DEFINITION:");
+                    sb.AppendLine("--------------------------------------------------------------------------------");
+                    using (var cmd = new SqlCommand("SELECT definition FROM sys.sql_modules WHERE object_id = OBJECT_ID('sp_InsertarDetalleVenta_Transactional')", conn))
+                    {
+                        sb.AppendLine(cmd.ExecuteScalar()?.ToString() ?? "Not found");
+                    }
+                    sb.AppendLine("--------------------------------------------------------------------------------\n");
+
+                    sb.AppendLine("DetalleVentaType COLUMNS:");
                     sb.AppendLine("--------------------------------------------------------------------------------");
                     string query = @"
-                        SELECT TABLE_NAME, TABLE_TYPE 
-                        FROM INFORMATION_SCHEMA.TABLES 
-                        WHERE TABLE_NAME IN ('Venta', 'Ventas')";
+                        SELECT c.name, t.name AS type 
+                        FROM sys.table_types tt
+                        INNER JOIN sys.columns c ON c.object_id = tt.type_table_object_id
+                        INNER JOIN sys.types t ON t.system_type_id = c.system_type_id
+                        WHERE tt.name = 'DetalleVentaType'";
                     using (var cmd = new SqlCommand(query, conn))
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            sb.AppendLine($"{reader["TABLE_NAME"]}: {reader["TABLE_TYPE"]}");
+                            sb.AppendLine($"{reader["name"]}: {reader["type"]}");
                         }
                     }
                     sb.AppendLine("--------------------------------------------------------------------------------\n");

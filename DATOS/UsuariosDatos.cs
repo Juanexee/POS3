@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -130,7 +130,7 @@ namespace DATOS
 
         //Metodo de actualizar
 
-        public void Actualizar(ENTIDADES.UsuarioDTO.CrearUsuarioDTO usuario, int usuarioModificacionID)
+        public void Actualizar(ENTIDADES.UsuarioDTO.CrearUsuarioDTO usuario, int usuarioModificacionID, byte[]? passwordHash = null, byte[]? passwordSalt = null)
         {
             using SqlConnection con = new(_cadenaConexion);
             con.Open();
@@ -148,6 +148,10 @@ namespace DATOS
 
             // **¡CAMBIO CRÍTICO DE AUDITORÍA!**
             cmd.Parameters.AddWithValue("@usuarioModificacionID", usuarioModificacionID);
+
+            // Parámetros de contraseña (pueden ser nulos si no se actualiza)
+            cmd.Parameters.AddWithValue("@passwordHash", (object?)passwordHash ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@passwordSalt", (object?)passwordSalt ?? DBNull.Value);
 
             cmd.ExecuteNonQuery();
         }

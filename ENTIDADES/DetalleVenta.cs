@@ -20,5 +20,16 @@ namespace ENTIDADES
         public int Cantidad { get; set; }
         public decimal PrecioUnitario { get; set; }
         public decimal Subtotal { get; set; }
+
+        public string? Comentario { get; set; }
+        
+        // Property alias for mapping from frontend JSON which sends 'personalizacion'
+        public string? Personalizacion
+        {
+            get => Comentario;
+            set => Comentario = value;
+        }
+
+        public string? EstadoCocinero { get; set; }
     }
 }

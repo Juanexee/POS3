@@ -1,4 +1,4 @@
-﻿using System.Linq; // Necesario para SequenceEqual
+using System.Linq; // Necesario para SequenceEqual
 using System.Security.Cryptography;
 using System.Text;
 using DATOS;
@@ -110,8 +110,21 @@ namespace NEGOCIO
                 throw new UnauthorizedAccessException("Se requiere el ID del usuario actual para la auditoría.");
             }
 
-            // 2. Llamada a la Capa de Datos, pasando el ID del modificador.
-            _usuariosDatos.Actualizar(usuarioAfectado, usuarioModificacionID);
+            byte[]? passwordHash = null;
+            byte[]? passwordSalt = null;
+
+            // Si se proporciona una contraseña, se genera un nuevo hash y salt
+            if (!string.IsNullOrWhiteSpace(usuarioAfectado.Password))
+            {
+                var saltBytes = GenerarSalt();
+                var hashCompleto = HashearPassword(usuarioAfectado.Password, saltBytes);
+                var partes = hashCompleto.Split('.');
+                passwordSalt = Convert.FromBase64String(partes[0]);
+                passwordHash = Convert.FromBase64String(partes[1]);
+            }
+
+            // 2. Llamada a la Capa de Datos, pasando el ID del modificador y los arrays de contraseña.
+            _usuariosDatos.Actualizar(usuarioAfectado, usuarioModificacionID, passwordHash, passwordSalt);
         }
 
         public void DesactivarUsuario(int usuarioID, int usuarioModificacionID)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +10,6 @@ namespace ENTIDADES
     {
 
         public List<int> IdsPedidos { get; set; } // La lista de IDs que agrupamos
-        public string NuevoEstado { get; set; }   // Ejemplo: "En Preparación"
+        public string? NuevoEstado { get; set; }   // Ejemplo: "En Preparación"
     }
 }

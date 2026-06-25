@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using DATOS;
 using ENTIDADES;
 using Microsoft.AspNetCore.Authorization;
@@ -151,9 +151,19 @@ namespace POS3.Controllers
                 // 2. ASIGNACIÓN CORREGIDA
                 usuario.UsuarioID = id; // <-- ¡Esto ya funcionará!
 
-                // 3. Llamamos al método de la capa de datos para actualizar.
-                // Se agrega el parámetro usuarioModificacionID (por ejemplo, el mismo id del usuario que modifica)
-                _usuariosDatos.Actualizar(usuario, id);
+                // Intentar obtener el ID del modificador desde el token, con fallback al propio ID del usuario
+                int modificadorId;
+                try
+                {
+                    modificadorId = ObtenerUsuarioIDModificador();
+                }
+                catch
+                {
+                    modificadorId = id;
+                }
+
+                // 3. Llamamos al método de la capa de negocio para actualizar.
+                _usuarioNegocio.ActualizarUsuario(usuario, modificadorId);
 
                 // 4. Devolvemos una respuesta exitosa.
                 return Ok(new { mensaje = "Usuario actualizado correctamente." });

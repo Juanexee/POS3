@@ -28,10 +28,11 @@ namespace DATOS
             tablaDetalles.Columns.Add("platilloID", typeof(int));
             tablaDetalles.Columns.Add("cantidad", typeof(int));
             tablaDetalles.Columns.Add("precio_unitario", typeof(decimal));
+            tablaDetalles.Columns.Add("comentario", typeof(string));
 
             foreach (var item in venta.DetalleVenta)
             {
-                tablaDetalles.Rows.Add(item.PlatilloID, item.Cantidad, item.PrecioUnitario);
+                tablaDetalles.Rows.Add(item.PlatilloID, item.Cantidad, item.PrecioUnitario, (object)item.Comentario ?? DBNull.Value);
             }
 
             using var con = new SqlConnection(_cadenaConexion);
@@ -85,7 +86,7 @@ namespace DATOS
                 venta = new Venta
                 {
                     VentaID = dr.GetInt32(dr.GetOrdinal("ventaID")),
-                    UsuarioID = dr.GetInt32(dr.GetOrdinal("usuarioID")),
+                    UsuarioID = dr.IsDBNull(dr.GetOrdinal("usuarioID")) ? (int?)null : dr.GetInt32(dr.GetOrdinal("usuarioID")),
                     MesaID = dr.GetInt32(dr.GetOrdinal("mesaID")),
 
                     // ClienteID puede ser nulo, se maneja de forma segura
@@ -94,8 +95,9 @@ namespace DATOS
                     Fecha = dr.GetDateTime(dr.GetOrdinal("fecha_venta")),
                     Total = dr.GetDecimal(dr.GetOrdinal("total")),
                     Estado = dr.GetString(dr.GetOrdinal("estado")),
-
-                    // Podrías mapear NombreMesero y NombreCliente aquí si los agregaste a la Entidad Venta.
+                    
+                    SesionID = dr.IsDBNull(dr.GetOrdinal("sesionID")) ? (int?)null : dr.GetInt32(dr.GetOrdinal("sesionID")),
+                    TipoPedido = dr.IsDBNull(dr.GetOrdinal("tipoPedido")) ? null : dr.GetString(dr.GetOrdinal("tipoPedido")),
 
                     DetalleVenta = new List<DetalleVenta>()
                 };
@@ -116,9 +118,11 @@ namespace DATOS
                     VentaID = idVenta,
                     PlatilloID = dr.GetInt32(dr.GetOrdinal("platilloID")), // Nuevo nombre
                     NombreProducto = dr.GetString(dr.GetOrdinal("NombrePlatillo")),
-                    Cantidad = dr.GetInt32(dr.GetOrdinal("cantidad")),
+                    Cantidad = dr.IsDBNull(dr.GetOrdinal("cantidad")) ? 0 : dr.GetInt32(dr.GetOrdinal("cantidad")),
                     PrecioUnitario = dr.GetDecimal(dr.GetOrdinal("precio_unitario")),
-                    Subtotal = dr.GetDecimal(dr.GetOrdinal("subtotal"))
+                    Subtotal = dr.IsDBNull(dr.GetOrdinal("subtotal")) ? 0 : dr.GetDecimal(dr.GetOrdinal("subtotal")),
+                    Comentario = dr.IsDBNull(dr.GetOrdinal("comentario")) ? null : dr.GetString(dr.GetOrdinal("comentario")),
+                    EstadoCocinero = dr.IsDBNull(dr.GetOrdinal("estadoCocinero")) ? null : dr.GetString(dr.GetOrdinal("estadoCocinero"))
                 });
             }
 
@@ -222,7 +226,8 @@ namespace DATOS
                                 FechaPrimerPedido = Convert.ToDateTime(dr["FechaPrimerPedido"]),
                                 IdsRelacionados = dr["IdsRelacionados"].ToString(),
                                 NumerosMesas = dr["NumerosMesas"].ToString(),
-                                Estado = dr["Estado"].ToString()
+                                Estado = dr["Estado"].ToString(),
+                                Comentarios = dr["Comentarios"] == DBNull.Value ? string.Empty : dr["Comentarios"].ToString()
                             });
                         }
                     }

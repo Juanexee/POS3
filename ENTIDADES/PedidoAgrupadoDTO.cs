@@ -14,6 +14,7 @@ namespace ENTIDADES
         public DateTime FechaPrimerPedido { get; set; } // Para calcular el tiempo real
         public string NumerosMesas { get; set; } = string.Empty;
         public string Estado { get; set; } = string.Empty;
+        public string Comentarios { get; set; } = string.Empty;
 
         // Propiedad calculada: No se guarda en BD, se genera al vuelo
         public int MinutosEspera => (int)(DateTime.Now - FechaPrimerPedido).TotalMinutes;
