@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using NEGOCIO;
 using POS3.Hubs;
+using System.Security.Claims;
 
 namespace POS4.Controllers
 {
@@ -107,7 +108,7 @@ namespace POS4.Controllers
         /// <response code="404">La venta con el ID especificado no existe</response>
         /// <response code="500">Fallo en el servidor</response>
         [HttpGet]
-        [Authorize(Roles = "Administrador,Cajero,Administrador3,Cajero3,CAJA,El super admin,admin")]
+        [Authorize(Roles = RolesApp.AdminOCaja)]
         public IActionResult ObtenerListadoVentas()
         {
             try

@@ -1,6 +1,5 @@
-﻿// Controlador de autenticación con JWT
+// Controlador de autenticación con JWT
 
-using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -12,18 +11,14 @@ using Microsoft.IdentityModel.Tokens;
 using NEGOCIO;
 
 /// <summary>
-/// Permite a un usuario iniciar secion y obtener un Token  
+/// Gestiona la autenticación de usuarios y la emisión de tokens JWT.
 /// </summary>
- 
-
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly UsuarioNegocio _usuarioNegocio;
     private readonly IConfiguration _config;
-    private readonly UsuariosDatos _usuariosDatos;
-
 
     public AuthController(IConfiguration configuration)
     {
@@ -31,85 +26,138 @@ public class AuthController : ControllerBase
 
         var cadenaConexion = _config.GetConnectionString("RestauranteDB");
         if (string.IsNullOrWhiteSpace(cadenaConexion))
-            throw new InvalidOperationException("Server=WINDOWS-TUTGG56\\KEVINLARA;Database=RestauranteDB;User Id=sa;Password=An1w0;Trusted_Connection=True;TrustServerCertificate=True");
+            throw new InvalidOperationException("La cadena de conexión 'RestauranteDB' no está configurada.");
 
-        var usuariosDatos = new UsuariosDatos(cadenaConexion);
-        _usuarioNegocio = new UsuarioNegocio(usuariosDatos);
+        _usuarioNegocio = new UsuarioNegocio(new UsuariosDatos(cadenaConexion));
     }
+
     /// <summary>
-    /// Permite que un usuario inicie secion y reciba un token JWT si las credenciales son validas
+    /// Inicia sesión y devuelve un token JWT junto con los datos básicos del usuario.
     /// </summary>
-    /// <param name="request"></param>
-    /// <returns> JWT y datos basicos del usuario </returns>
-    /// <response code="200">Inicio de sesion exitoso </response>
-    /// <response code="401">Credenciales incorrectas </response>
-    /// <response code="400">Faltan campos obligatorios como nombre usuario o password. </response>
-    /// <response code="500">Error de servidor,problema de conexión con la base de datos </response>
-
-
+    /// <param name="request">Credenciales (NombreUsuario + Password)</param>
+    /// <returns>Token JWT y datos del usuario autenticado</returns>
+    /// <response code="200">Inicio de sesión exitoso</response>
+    /// <response code="400">Faltan campos obligatorios (usuario o contraseña)</response>
+    /// <response code="401">Credenciales incorrectas o usuario inactivo</response>
+    /// <response code="500">Error de servidor o problema de conexión con la BD</response>
     [HttpPost("login")]
+    [AllowAnonymous]
     public IActionResult Login([FromBody] LoginDto request)
     {
-        // Validar el modelo model state
         if (!ModelState.IsValid)
-        {
             return BadRequest(ModelState);
-        }
-        if (request == null || string.IsNullOrWhiteSpace(request.NombreUsuario) || string.IsNullOrWhiteSpace(request.Password))
+
+        if (request == null
+            || string.IsNullOrWhiteSpace(request.NombreUsuario)
+            || string.IsNullOrWhiteSpace(request.Password))
             return BadRequest("Nombre de usuario y contraseña son requeridos.");
-        
+
         var usuario = _usuarioNegocio.Login(request.NombreUsuario, request.Password);
-        if (usuario == null) return Unauthorized(new { error = "Credenciales inválidas." });
+        if (usuario == null)
+            return Unauthorized(new { error = "Credenciales inválidas o usuario inactivo." });
 
         var token = GenerarToken(usuario);
-        return Ok(new { token });
+
+        // Devolvemos el token junto con datos básicos para que Flutter los muestre
+        // sin necesidad de llamar a otro endpoint inmediatamente.
+        return Ok(new
+        {
+            token,
+            usuarioID  = usuario.UsuarioID,
+            nombre     = usuario.Nombre,
+            nombreUsuario = usuario.NombreUsuario,
+            rol        = usuario.RolNombre,
+            expiraEn   = ObtenerExpiracionMinutos()
+        });
     }
+
+    /// <summary>
+    /// Devuelve el perfil del usuario actualmente autenticado (extraído del token JWT).
+    /// Útil para que la app móvil obtenga los datos del usuario sin guardarlos en local.
+    /// </summary>
+    /// <response code="200">Perfil del usuario autenticado</response>
+    /// <response code="401">Token inválido o ausente</response>
+    [HttpGet("me")]
+    [Authorize]
+    public IActionResult ObtenerPerfil()
+    {
+        var usuarioID  = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var nombre     = User.FindFirstValue(ClaimTypes.Name);
+        var rol        = User.FindFirstValue(ClaimTypes.Role);
+
+        if (string.IsNullOrEmpty(usuarioID))
+            return Unauthorized(new { error = "Token inválido: no contiene ID de usuario." });
+
+        return Ok(new
+        {
+            usuarioID  = int.Parse(usuarioID),
+            nombre,
+            rol
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // PRIVADO: Generación del token JWT
+    // -----------------------------------------------------------------------
 
     private string GenerarToken(Usuario usuario)
     {
         if (usuario == null)
             throw new ArgumentNullException(nameof(usuario));
 
-        // Validar que los campos no sean nulos
-        string nombreUsuario = usuario.Nombre ?? "Usuario";
-        string rolUsuario = usuario.RolNombre ?? "Usuario";
+        string nombreUsuario = usuario.Nombre     ?? "Usuario";
+        string rolUsuario    = usuario.RolNombre  ?? RolesApp.Mesero;
 
-        // Crear claims
         var claims = new[]
         {
-            // ¡CRÍTICO! Permite identificar al usuario en cualquier endpoint.
-          new Claim(ClaimTypes.NameIdentifier, usuario.UsuarioID.ToString()), 
-    
-          // Este se usa para mostrar el nombre en la interfaz, etc.
-           new Claim(ClaimTypes.Name, nombreUsuario), 
-    
-           // Este se usa para la autorización ([Authorize(Roles=...)]).
-           new Claim(ClaimTypes.Role, rolUsuario)
+            // ID único del usuario → usado en endpoints para saber quién actúa
+            new Claim(ClaimTypes.NameIdentifier, usuario.UsuarioID.ToString()),
+            // Nombre legible → visible en cabeceras de la app
+            new Claim(ClaimTypes.Name, nombreUsuario),
+            // Rol → usado por [Authorize(Roles=...)] en todos los controllers
+            new Claim(ClaimTypes.Role, rolUsuario)
         };
 
-        // Obtener clave secreta desde configuración
         var keyValue = _config["Jwt:Key"];
         if (string.IsNullOrEmpty(keyValue))
-            throw new InvalidOperationException("JWT Key no configurada en Jwt:Key");
+            throw new InvalidOperationException("JWT Key no configurada en 'Jwt:Key'.");
 
-        // Validar tamaño de clave (UTF8 bytes)
         var keyBytes = Encoding.UTF8.GetBytes(keyValue);
         if (keyBytes.Length < 32)
-            throw new InvalidOperationException($"La clave JWT es demasiado corta ({keyBytes.Length} bytes). Debe ser de al menos 32 bytes (256 bits) para el algoritmo HS256.");
+            throw new InvalidOperationException(
+                $"La clave JWT es demasiado corta ({keyBytes.Length} bytes). Mínimo 32 bytes para HS256.");
 
-        var key = new SymmetricSecurityKey(keyBytes);
+        var key   = new SymmetricSecurityKey(keyBytes);
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        // Crear token
+        // Leemos la expiración desde appsettings.json (Jwt:ExpirationMinutes).
+        // El TDR (RNF-SEG-03) exige máximo 8 horas (480 min). Si el valor de
+        // configuración supera ese límite, lo forzamos a 480 min.
+        int expirationMinutes = ObtenerExpiracionMinutos();
+
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"] ?? "juan",
-            audience: _config["Jwt:Audience"] ?? "juanUsuarios",
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(2),  // Usar UTC
+            issuer:             _config["Jwt:Issuer"]   ?? "RanchoLaMimi",
+            audience:           _config["Jwt:Audience"] ?? "RanchoLaMimiApp",
+            claims:             claims,
+            expires:            DateTime.UtcNow.AddMinutes(expirationMinutes),
             signingCredentials: creds
         );
 
-        // Retornar token en formato string
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    /// <summary>
+    /// Lee ExpirationMinutes de la configuración y lo limita al máximo
+    /// permitido por el TDR (RNF-SEG-03): 8 horas = 480 minutos.
+    /// </summary>
+    private int ObtenerExpiracionMinutos()
+    {
+        const int maxMinutos = 480; // 8 horas — límite TDR RNF-SEG-03
+        const int defMinutos = 480; // valor por defecto si no está en config
+
+        if (int.TryParse(_config["Jwt:ExpirationMinutes"], out int configMinutos) && configMinutos > 0)
+            return Math.Min(configMinutos, maxMinutos);
+
+        return defMinutos;
     }
 }
