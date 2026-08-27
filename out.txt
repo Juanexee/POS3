@@ -1,0 +1,33 @@
+﻿powershell : At line:1 char:161
+At line:1 char:1
++ powershell -Command "$conn = New-Object System.Data.SqlClient.SqlConn ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (At line:1 char:161:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
++ ... er Id=sa;Password=An1w0;TrustServerCertificate=True'); .Open();  = .C ...
++                                                                  ~
+An expression was expected after '('.
+At line:1 char:182
++ ... w0;TrustServerCertificate=True'); .Open();  = .CreateCommand(); .Comm ...
++                                                                  ~
+An expression was expected after '('.
+At line:1 char:249
++ ... mmandText = 'SELECT name FROM sys.tables';  = .ExecuteReader(); while ...
++                                                                  ~
+An expression was expected after '('.
+At line:1 char:264
++ ... LECT name FROM sys.tables';  = .ExecuteReader(); while(.Read()){[0] | ...
++                                                                  ~
+An expression was expected after '('.
+At line:1 char:268
++ ...  name FROM sys.tables';  = .ExecuteReader(); while(.Read()){[0] | Out ...
++                                                                  ~
+Missing type name after '['.
+At line:1 char:399
++ ... NAN\UNAN TERCER AÑO\1 SEMESTRE\WEB II\POS3\out_tables.txt'}; .Close()
++                                                                         ~
+An expression was expected after '('.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : ExpectedExpression
+ 
