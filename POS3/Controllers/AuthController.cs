@@ -1,4 +1,4 @@
-﻿// Controlador de autenticación con JWT
+// Controlador de autenticación con JWT
 
 using System.Data;
 using System.IdentityModel.Tokens.Jwt;
@@ -61,11 +61,25 @@ public class AuthController : ControllerBase
         var usuario = _usuarioNegocio.Login(request.NombreUsuario, request.Password);
         if (usuario == null) return Unauthorized(new { error = "Credenciales inválidas." });
 
-        var token = GenerarToken(usuario);
-        return Ok(new { token });
+        // Calcular fecha de expiración (8 horas máximo, RNF-MOV-SEG-03)
+        var expiresAt = DateTime.UtcNow.AddHours(8);
+        var token = GenerarToken(usuario, expiresAt);
+
+        // Retornar respuesta completa para RBAC en Flutter (RF-MOV-AUT-02, RF-MOV-AUT-03)
+        var response = new LoginResponseDto
+        {
+            Token = token,
+            UsuarioID = usuario.UsuarioID,
+            NombreCompleto = usuario.Nombre,
+            NombreUsuario = usuario.NombreUsuario,
+            Rol = usuario.RolNombre ?? "Usuario",
+            ExpiresAt = expiresAt
+        };
+
+        return Ok(response);
     }
 
-    private string GenerarToken(Usuario usuario)
+    private string GenerarToken(Usuario usuario, DateTime? expiresAt = null)
     {
         if (usuario == null)
             throw new ArgumentNullException(nameof(usuario));
@@ -100,12 +114,15 @@ public class AuthController : ControllerBase
         var key = new SymmetricSecurityKey(keyBytes);
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        // Expiración máxima de 8 horas (RNF-MOV-SEG-03)
+        var expiracion = expiresAt ?? DateTime.UtcNow.AddHours(8);
+
         // Crear token
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"] ?? "juan",
             audience: _config["Jwt:Audience"] ?? "juanUsuarios",
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(2),  // Usar UTC
+            expires: expiracion,
             signingCredentials: creds
         );
 

@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using DATOS;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -76,6 +76,20 @@ namespace API_REST_V3
 
             // NUEVO: Registramos PlatilloNegocio para que funcione con tu PlatilloController correctamente
             builder.Services.AddScoped<PlatilloNegocio>();
+
+            // =====================================================
+            // NUEVOS SERVICIOS: App Móvil Gerencial + Analítica
+            // =====================================================
+
+            // RF-MOV-DSH-01, RF-MOV-DSH-02: Dashboard y tendencias de ventas
+            builder.Services.AddScoped<AnaliticaNegocio>();
+
+            // RF-MOV-AUD-01, RF-MOV-AUD-02: Auditoría y logs en MongoDB
+            var mongoConnectionString = builder.Configuration["MongoDB:ConnectionString"] ?? "PENDIENTE";
+            var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"] ?? "RestauranteAuditoria";
+            builder.Services.AddScoped<AuditoriaDatos>(sp =>
+                new AuditoriaDatos(mongoConnectionString, mongoDatabaseName));
+            builder.Services.AddScoped<AuditoriaNegocio>();
 
             // Registrar VentaNegocio con su constructor expl�cito por seguridad de dependencias cruzadas
             builder.Services.AddScoped<IVentaNegocio, VentaNegocio>(s =>
