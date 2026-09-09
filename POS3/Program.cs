@@ -52,8 +52,10 @@ namespace API_REST_V3
             builder.Services.AddScoped<CompraDatos>(s => new CompraDatos(connectionString));
             builder.Services.AddScoped<UnidadMedidaDatos>(s => new UnidadMedidaDatos(connectionString));
             builder.Services.AddScoped<RolesDatos>(s => new RolesDatos(connectionString));
+            // RF-MOV-AUT-01: UsuariosDatos para autenticación (AuthController via DI)
+            builder.Services.AddScoped<UsuariosDatos>(s => new UsuariosDatos(connectionString));
 
-            // CORRECCI�N: Unificamos los platillos para evitar registrar PlatillosDatos 3 veces de forma diferente
+            // Unificamos los platillos para evitar registrar PlatillosDatos 3 veces de forma diferente
             builder.Services.AddScoped<PlatillosDatos>(s => new PlatillosDatos(connectionString));
             builder.Services.AddScoped<IPlatillosDatos, PlatillosDatos>(s => new PlatillosDatos(connectionString));
 
@@ -73,8 +75,8 @@ namespace API_REST_V3
             builder.Services.AddScoped<UnidadMedidaNegocio>();
             builder.Services.AddScoped<MesaNegocio>();
             builder.Services.AddScoped<RolNegocio>();
-
-            // NUEVO: Registramos PlatilloNegocio para que funcione con tu PlatilloController correctamente
+            // RF-MOV-AUT-01: UsuarioNegocio para autenticación (AuthController via DI)
+            builder.Services.AddScoped<UsuarioNegocio>();
             builder.Services.AddScoped<PlatilloNegocio>();
 
             // =====================================================

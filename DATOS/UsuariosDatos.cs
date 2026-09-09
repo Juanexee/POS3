@@ -200,13 +200,20 @@ namespace DATOS
                         {
                             usuario = new()
                             {
-                                UsuarioID = Convert.ToInt32(reader["usuarioID"]),
+                                UsuarioID     = Convert.ToInt32(reader["usuarioID"]),
                                 NombreUsuario = reader["nombreUsuario"].ToString()!,
-                                PasswordHash = (byte[]?)reader["passwordHash"],
-                                PasswordSalt = (byte[]?)reader["passwordSalt"],
-                                RolID = Convert.ToInt32(reader["rolID"]),
-                                RolNombre = reader["NombreRol"].ToString()!, // Asumimos que el SP devuelve NombreRol
-                                Activo = Convert.ToBoolean(reader["activo"]) // Otros campos si los necesitas (Nombre, Telefono, Activo)
+                                // Nombre completo — necesario para LoginResponseDto.NombreCompleto
+                                Nombre        = reader.IsDBNull(reader.GetOrdinal("nombre"))
+                                                ? string.Empty
+                                                : reader["nombre"].ToString()!,
+                                Telefono      = reader.IsDBNull(reader.GetOrdinal("telefono"))
+                                                ? string.Empty
+                                                : reader["telefono"].ToString()!,
+                                PasswordHash  = (byte[]?)reader["passwordHash"],
+                                PasswordSalt  = (byte[]?)reader["passwordSalt"],
+                                RolID         = Convert.ToInt32(reader["rolID"]),
+                                RolNombre     = reader["NombreRol"].ToString()!, // SP debe retornar NombreRol
+                                Activo        = Convert.ToBoolean(reader["activo"])
                             };
                         }
                     }

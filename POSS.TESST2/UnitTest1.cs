@@ -8,7 +8,9 @@ namespace POSS.TESST2
 {
     public class UnitTest1
     {
-        [Fact]
+        // Test de diagnóstico para inspeccionar stored procedures en SQL Server.
+        // Se ejecuta manualmente quitando el Skip cuando se necesita depurar la BD.
+        [Fact(Skip = "Test de diagnóstico — ejecutar manualmente para inspeccionar SPs de SQL Server")]
         public void Test1()
         {
             string connStr = "Server=DESKTOP-3AL47F6;Database=RestauranteDB;User Id=sa;Password=An1w0;Trusted_Connection=True;TrustServerCertificate=True";
