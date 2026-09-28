@@ -302,5 +302,266 @@ namespace DATOS
                 return resultado != null ? Convert.ToInt32(resultado) : 0;
             }
         }
+
+        // =====================================================
+        // Métodos analíticos para la App Móvil Gerencial
+        // RF-MOV-DSH-01, RF-MOV-DSH-02, RF-MOV-BUS-02
+        // =====================================================
+
+        /// <summary>
+        /// Calcula los KPIs del dashboard para la fecha indicada.
+        /// Cubre RF-MOV-DSH-01.
+        /// </summary>
+        public DashboardKpiDTO ObtenerKPIs(DateTime fecha)
+        {
+            var kpi = new DashboardKpiDTO { FechaConsulta = DateTime.Now };
+            DateTime inicioDia = fecha.Date;
+            DateTime finDia = inicioDia.AddDays(1).AddSeconds(-1);
+            DateTime inicioSemana = inicioDia.AddDays(-(int)inicioDia.DayOfWeek);
+            DateTime inicioMes = new DateTime(fecha.Year, fecha.Month, 1);
+
+            using var con = new SqlConnection(_cadenaConexion);
+            con.Open();
+
+            // KPIs del día
+            string queryDia = @"
+                SELECT 
+                    ISNULL(SUM(total), 0)   AS TotalHoy,
+                    COUNT(*)                AS CantidadOrdenes
+                FROM Ventas
+                WHERE estado = 'Pagada'
+                  AND fecha_venta >= @inicioDia
+                  AND fecha_venta <= @finDia";
+
+            using (var cmd = new SqlCommand(queryDia, con))
+            {
+                cmd.Parameters.AddWithValue("@inicioDia", inicioDia);
+                cmd.Parameters.AddWithValue("@finDia", finDia);
+                using var dr = cmd.ExecuteReader();
+                if (dr.Read())
+                {
+                    kpi.TotalVentasHoy = dr.GetDecimal(0);
+                    kpi.CantidadOrdenesHoy = dr.GetInt32(1);
+                    kpi.TicketPromedio = kpi.CantidadOrdenesHoy > 0
+                        ? Math.Round(kpi.TotalVentasHoy / kpi.CantidadOrdenesHoy, 2)
+                        : 0;
+                }
+            }
+
+            // Total semana
+            string querySemana = @"
+                SELECT ISNULL(SUM(total), 0)
+                FROM Ventas
+                WHERE estado = 'Pagada'
+                  AND fecha_venta >= @inicioSemana
+                  AND fecha_venta <= @finDia";
+            using (var cmd = new SqlCommand(querySemana, con))
+            {
+                cmd.Parameters.AddWithValue("@inicioSemana", inicioSemana);
+                cmd.Parameters.AddWithValue("@finDia", finDia);
+                kpi.TotalVentasSemana = (decimal)(cmd.ExecuteScalar() ?? 0m);
+            }
+
+            // Total mes y margen
+            string queryMes = @"
+                SELECT ISNULL(SUM(total), 0)
+                FROM Ventas
+                WHERE estado = 'Pagada'
+                  AND fecha_venta >= @inicioMes
+                  AND fecha_venta <= @finDia";
+            using (var cmd = new SqlCommand(queryMes, con))
+            {
+                cmd.Parameters.AddWithValue("@inicioMes", inicioMes);
+                cmd.Parameters.AddWithValue("@finDia", finDia);
+                kpi.TotalVentasMes = (decimal)(cmd.ExecuteScalar() ?? 0m);
+            }
+
+            // Margen estimado (30% sobre ventas del mes como aproximación, ajustar según lógica real)
+            kpi.MargenGananciaAcumulado = Math.Round(kpi.TotalVentasMes * 0.30m, 2);
+
+            return kpi;
+        }
+
+        /// <summary>
+        /// Obtiene datos de tendencia de ventas agrupados por período.
+        /// Cubre RF-MOV-DSH-02.
+        /// </summary>
+        public List<TendenciaVentasDTO> ObtenerTendenciaVentas(string periodo)
+        {
+            var lista = new List<TendenciaVentasDTO>();
+            string query;
+
+            switch (periodo?.ToLower())
+            {
+                case "semana":
+                    // Últimas 8 semanas agrupadas
+                    query = @"
+                        SELECT 
+                            DATEPART(YEAR, fecha_venta)  AS Anio,
+                            DATEPART(WEEK, fecha_venta)  AS Semana,
+                            MIN(CAST(fecha_venta AS DATE)) AS FechaInicio,
+                            ISNULL(SUM(total), 0)        AS TotalVentas,
+                            COUNT(*)                     AS CantidadOrdenes
+                        FROM Ventas
+                        WHERE estado = 'Pagada'
+                          AND fecha_venta >= DATEADD(WEEK, -8, GETDATE())
+                        GROUP BY DATEPART(YEAR, fecha_venta), DATEPART(WEEK, fecha_venta)
+                        ORDER BY Anio, Semana";
+                    break;
+                case "mes":
+                    // Últimos 12 meses agrupados
+                    query = @"
+                        SELECT 
+                            DATEPART(YEAR, fecha_venta)  AS Anio,
+                            DATEPART(MONTH, fecha_venta) AS Mes,
+                            MIN(CAST(fecha_venta AS DATE)) AS FechaInicio,
+                            ISNULL(SUM(total), 0)        AS TotalVentas,
+                            COUNT(*)                     AS CantidadOrdenes
+                        FROM Ventas
+                        WHERE estado = 'Pagada'
+                          AND fecha_venta >= DATEADD(MONTH, -12, GETDATE())
+                        GROUP BY DATEPART(YEAR, fecha_venta), DATEPART(MONTH, fecha_venta)
+                        ORDER BY Anio, Mes";
+                    break;
+                default: // "dia" o cualquier otro valor
+                    // Últimos 7 días
+                    query = @"
+                        SELECT 
+                            CAST(fecha_venta AS DATE)    AS FechaInicio,
+                            CAST(fecha_venta AS DATE)    AS FechaRef,
+                            ISNULL(SUM(total), 0)        AS TotalVentas,
+                            COUNT(*)                     AS CantidadOrdenes
+                        FROM Ventas
+                        WHERE estado = 'Pagada'
+                          AND fecha_venta >= DATEADD(DAY, -7, GETDATE())
+                        GROUP BY CAST(fecha_venta AS DATE)
+                        ORDER BY FechaInicio";
+                    break;
+            }
+
+            using var con = new SqlConnection(_cadenaConexion);
+            using var cmd = new SqlCommand(query, con);
+            con.Open();
+            using var dr = cmd.ExecuteReader();
+            while (dr.Read())
+            {
+                var fecha = Convert.ToDateTime(dr["FechaInicio"]);
+                var totalVentas = Convert.ToDecimal(dr["TotalVentas"]);
+                var cantidad = Convert.ToInt32(dr["CantidadOrdenes"]);
+
+                string etiqueta = periodo?.ToLower() switch
+                {
+                    "semana" => $"Sem {dr["Semana"]} ({fecha:dd/MM})",
+                    "mes" => fecha.ToString("MMMM yyyy"),
+                    _ => fecha.ToString("ddd dd/MM")
+                };
+
+                lista.Add(new TendenciaVentasDTO
+                {
+                    Etiqueta = etiqueta,
+                    Fecha = fecha,
+                    TotalVentas = totalVentas,
+                    CantidadOrdenes = cantidad
+                });
+            }
+            return lista;
+        }
+
+        /// <summary>
+        /// Obtiene facturas filtradas con paginación.
+        /// Cubre RF-MOV-BUS-02 y RF-MOV-MON-03.
+        /// </summary>
+        public FacturasPaginadasDTO ObtenerFacturasFiltradas(FiltroFacturasDTO filtro)
+        {
+            var resultado = new FacturasPaginadasDTO
+            {
+                PaginaActual = filtro.Pagina,
+                TamanoPagina = filtro.TamanoPagina
+            };
+
+            // Construimos la query dinámicamente con los filtros opcionales
+            var whereClausulas = new List<string> { "1=1" };
+
+            if (filtro.FechaDesde.HasValue)
+                whereClausulas.Add("v.fecha_venta >= @fechaDesde");
+            if (filtro.FechaHasta.HasValue)
+                whereClausulas.Add("v.fecha_venta <= @fechaHasta");
+            if (filtro.MontoMinimo.HasValue)
+                whereClausulas.Add("v.total >= @montoMinimo");
+            if (filtro.MontoMaximo.HasValue)
+                whereClausulas.Add("v.total <= @montoMaximo");
+            if (!string.IsNullOrWhiteSpace(filtro.Estado))
+                whereClausulas.Add("v.estado = @estado");
+            if (!string.IsNullOrWhiteSpace(filtro.MetodoPago))
+                whereClausulas.Add("v.metodoPago = @metodoPago");
+
+            string where = string.Join(" AND ", whereClausulas);
+            int offset = (filtro.Pagina - 1) * filtro.TamanoPagina;
+
+            string queryConteo = $@"
+                SELECT COUNT(*)
+                FROM Ventas v
+                WHERE {where}";
+
+            string queryData = $@"
+                SELECT 
+                    v.ventaID, v.fecha_venta AS fechaVenta, v.total, v.estado, 
+                    v.usuarioID, u.nombre AS nombreCajero, v.mesaID
+                FROM Ventas v
+                LEFT JOIN Usuarios u ON v.usuarioID = u.usuarioID
+                WHERE {where}
+                ORDER BY v.fecha_venta DESC
+                OFFSET @offset ROWS FETCH NEXT @tamanoPagina ROWS ONLY";
+
+            using var con = new SqlConnection(_cadenaConexion);
+            con.Open();
+
+            // Conteo total
+            using (var cmdCount = new SqlCommand(queryConteo, con))
+            {
+                AgregarParametrosFiltro(cmdCount, filtro);
+                resultado.TotalRegistros = (int)cmdCount.ExecuteScalar();
+            }
+
+            // Datos paginados
+            using var cmdData = new SqlCommand(queryData, con);
+            AgregarParametrosFiltro(cmdData, filtro);
+            cmdData.Parameters.AddWithValue("@offset", offset);
+            cmdData.Parameters.AddWithValue("@tamanoPagina", filtro.TamanoPagina);
+
+            using var dr = cmdData.ExecuteReader();
+            while (dr.Read())
+            {
+                resultado.Facturas.Add(new VentaListaDTO
+                {
+                    VentaID = dr.GetInt32(dr.GetOrdinal("ventaID")),
+                    FechaVenta = dr.GetDateTime(dr.GetOrdinal("fechaVenta")),
+                    Total = dr.GetDecimal(dr.GetOrdinal("total")),
+                    Estado = dr.GetString(dr.GetOrdinal("estado")),
+                    UsuarioID = dr.IsDBNull(dr.GetOrdinal("usuarioID")) ? null : dr.GetInt32(dr.GetOrdinal("usuarioID")),
+                    NombreCajero = dr.IsDBNull(dr.GetOrdinal("nombreCajero")) ? null : dr.GetString(dr.GetOrdinal("nombreCajero")),
+                    MesaID = dr.GetInt32(dr.GetOrdinal("mesaID"))
+                });
+            }
+
+            return resultado;
+        }
+
+        /// <summary>Agrega los parámetros de filtro a un SqlCommand.</summary>
+        private static void AgregarParametrosFiltro(SqlCommand cmd, FiltroFacturasDTO filtro)
+        {
+            if (filtro.FechaDesde.HasValue)
+                cmd.Parameters.AddWithValue("@fechaDesde", filtro.FechaDesde.Value);
+            if (filtro.FechaHasta.HasValue)
+                cmd.Parameters.AddWithValue("@fechaHasta", filtro.FechaHasta.Value.Date.AddDays(1).AddSeconds(-1));
+            if (filtro.MontoMinimo.HasValue)
+                cmd.Parameters.AddWithValue("@montoMinimo", filtro.MontoMinimo.Value);
+            if (filtro.MontoMaximo.HasValue)
+                cmd.Parameters.AddWithValue("@montoMaximo", filtro.MontoMaximo.Value);
+            if (!string.IsNullOrWhiteSpace(filtro.Estado))
+                cmd.Parameters.AddWithValue("@estado", filtro.Estado);
+            if (!string.IsNullOrWhiteSpace(filtro.MetodoPago))
+                cmd.Parameters.AddWithValue("@metodoPago", filtro.MetodoPago);
+        }
     }
-}
+}

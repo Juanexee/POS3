@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using DATOS;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -52,8 +52,10 @@ namespace API_REST_V3
             builder.Services.AddScoped<CompraDatos>(s => new CompraDatos(connectionString));
             builder.Services.AddScoped<UnidadMedidaDatos>(s => new UnidadMedidaDatos(connectionString));
             builder.Services.AddScoped<RolesDatos>(s => new RolesDatos(connectionString));
+            // RF-MOV-AUT-01: UsuariosDatos para autenticación (AuthController via DI)
+            builder.Services.AddScoped<UsuariosDatos>(s => new UsuariosDatos(connectionString));
 
-            // CORRECCI�N: Unificamos los platillos para evitar registrar PlatillosDatos 3 veces de forma diferente
+            // Unificamos los platillos para evitar registrar PlatillosDatos 3 veces de forma diferente
             builder.Services.AddScoped<PlatillosDatos>(s => new PlatillosDatos(connectionString));
             builder.Services.AddScoped<IPlatillosDatos, PlatillosDatos>(s => new PlatillosDatos(connectionString));
 
@@ -73,9 +75,23 @@ namespace API_REST_V3
             builder.Services.AddScoped<UnidadMedidaNegocio>();
             builder.Services.AddScoped<MesaNegocio>();
             builder.Services.AddScoped<RolNegocio>();
-
-            // NUEVO: Registramos PlatilloNegocio para que funcione con tu PlatilloController correctamente
+            // RF-MOV-AUT-01: UsuarioNegocio para autenticación (AuthController via DI)
+            builder.Services.AddScoped<UsuarioNegocio>();
             builder.Services.AddScoped<PlatilloNegocio>();
+
+            // =====================================================
+            // NUEVOS SERVICIOS: App Móvil Gerencial + Analítica
+            // =====================================================
+
+            // RF-MOV-DSH-01, RF-MOV-DSH-02: Dashboard y tendencias de ventas
+            builder.Services.AddScoped<AnaliticaNegocio>();
+
+            // RF-MOV-AUD-01, RF-MOV-AUD-02: Auditoría y logs en MongoDB
+            var mongoConnectionString = builder.Configuration["MongoDB:ConnectionString"] ?? "PENDIENTE";
+            var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"] ?? "RestauranteAuditoria";
+            builder.Services.AddScoped<AuditoriaDatos>(sp =>
+                new AuditoriaDatos(mongoConnectionString, mongoDatabaseName));
+            builder.Services.AddScoped<AuditoriaNegocio>();
 
             // Registrar VentaNegocio con su constructor expl�cito por seguridad de dependencias cruzadas
             builder.Services.AddScoped<IVentaNegocio, VentaNegocio>(s =>

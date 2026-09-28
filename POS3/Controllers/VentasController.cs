@@ -213,5 +213,63 @@ namespace POS4.Controllers
                 return StatusCode(500, new { success = false, message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Obtiene un listado de facturas/ventas con filtros avanzados y paginación.
+        /// Soporta filtro por fecha, monto, método de pago y estado.
+        /// Cubre RF-MOV-BUS-02 y RF-MOV-MON-03.
+        /// </summary>
+        /// <param name="fechaDesde">Fecha de inicio del rango. Formato: YYYY-MM-DD (opcional)</param>
+        /// <param name="fechaHasta">Fecha de fin del rango. Formato: YYYY-MM-DD (opcional)</param>
+        /// <param name="estado">Estado de la factura: Pendiente, Pagada, Anulada (opcional)</param>
+        /// <param name="metodoPago">Método de pago: Efectivo, Tarjeta, etc. (opcional)</param>
+        /// <param name="montoMinimo">Monto mínimo de la factura (opcional)</param>
+        /// <param name="montoMaximo">Monto máximo de la factura (opcional)</param>
+        /// <param name="pagina">Número de página (comienza en 1, por defecto: 1)</param>
+        /// <param name="tamanoPagina">Registros por página (máx. 100, por defecto: 20)</param>
+        /// <response code="200">Lista de facturas paginada con metadatos de paginación.</response>
+        /// <response code="401">Token JWT ausente o inválido.</response>
+        /// <response code="403">Rol sin permisos para consultar facturas.</response>
+        /// <response code="500">Error interno al consultar facturas.</response>
+        [HttpGet("filtrar")]
+        [Authorize(Roles = "Gerente,Administrador,Supervisor,admin,El super admin,Administrador3,CAJA")]
+        [ProducesResponseType(typeof(FacturasPaginadasDTO), 200)]
+        public IActionResult ObtenerFacturasFiltradas(
+            [FromQuery] DateTime? fechaDesde = null,
+            [FromQuery] DateTime? fechaHasta = null,
+            [FromQuery] string? estado = null,
+            [FromQuery] string? metodoPago = null,
+            [FromQuery] decimal? montoMinimo = null,
+            [FromQuery] decimal? montoMaximo = null,
+            [FromQuery] int pagina = 1,
+            [FromQuery] int tamanoPagina = 20)
+        {
+            var filtro = new FiltroFacturasDTO
+            {
+                FechaDesde = fechaDesde,
+                FechaHasta = fechaHasta,
+                Estado = estado,
+                MetodoPago = metodoPago,
+                MontoMinimo = montoMinimo,
+                MontoMaximo = montoMaximo,
+                Pagina = pagina,
+                TamanoPagina = tamanoPagina
+            };
+
+            try
+            {
+                var resultado = _ventaNegocio.ObtenerFacturasFiltradas(filtro);
+                return Ok(resultado);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Error al filtrar las facturas.",
+                    detail = ex.Message
+                });
+            }
+        }
     }
 }

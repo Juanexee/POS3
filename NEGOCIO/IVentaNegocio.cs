@@ -9,19 +9,26 @@ namespace NEGOCIO
 {
     public interface IVentaNegocio
     {
-
         RespuestaRegistroVenta RegistrarVenta(Venta venta);
 
         Venta ObtenerVentaConDetalles(int idVenta);
-        public List<VentaListaDTO> LeerTodas();
 
+        List<VentaListaDTO> LeerTodas();
 
         int GuardarVenta(VentaListaDTO venta);
 
         List<PedidoAgrupadoDTO> ObtenerPedidosParaCocina();
 
         bool ActualizarEstadoMasivo(string ids, string nuevoEstado);
+
         bool ActualizarEstadoVenta(int ventaId, string nuevoEstado);
+
         int ObtenerVentaActivaPorMesa(int mesaId);
+
+        /// <summary>
+        /// Obtiene facturas filtradas con paginación.
+        /// Cubre RF-MOV-BUS-02 (filtros avanzados) y RF-MOV-MON-03 (listado histórico).
+        /// </summary>
+        FacturasPaginadasDTO ObtenerFacturasFiltradas(FiltroFacturasDTO filtro);
     }
 }

@@ -161,5 +161,21 @@ namespace NEGOCIO
             if (mesaId <= 0) throw new ArgumentException("El ID de la mesa debe ser un valor positivo.");
             return _ventaDatos.ObtenerVentaActivaPorMesa(mesaId);
         }
+
+        /// <summary>
+        /// Obtiene facturas filtradas con paginación.
+        /// Cubre RF-MOV-BUS-02 (filtros avanzados) y RF-MOV-MON-03 (listado histórico de facturas).
+        /// </summary>
+        public FacturasPaginadasDTO ObtenerFacturasFiltradas(FiltroFacturasDTO filtro)
+        {
+            if (filtro == null)
+                throw new ArgumentNullException(nameof(filtro));
+
+            if (filtro.Pagina < 1) filtro.Pagina = 1;
+            if (filtro.TamanoPagina < 1) filtro.TamanoPagina = 20;
+            if (filtro.TamanoPagina > 100) filtro.TamanoPagina = 100;
+
+            return _ventaDatos.ObtenerFacturasFiltradas(filtro);
+        }
     }
-}
+}
