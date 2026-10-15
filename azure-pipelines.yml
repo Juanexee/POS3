@@ -1,0 +1,58 @@
+trigger:
+  - main # O la rama principal que utilices (master o main)
+
+pool:
+  vmImage: 'windows-2022'
+
+variables:
+  proyecto: '**/*.csproj'
+  buildConfiguration: 'Release'
+  dotnetVersion: '8.0.x' # Cambia esto a la versión de .NET de tu API (ej. 8.0.x o 9.0.x)
+
+stages:
+# 1. ETAPA DE COMPILACIÓN (CI)
+- stage: Build
+  displayName: 'Compilación y Publicación'
+  jobs:
+  - job: BuildJob
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '$(dotnetVersion)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'publish'
+        publishWebProjects: true
+        projects: '$(proyecto)'
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+        zipAfterPublish: true
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+
+# 2. ETAPA DE DESPLIEGUE (CD)
+- stage: Deploy
+  displayName: 'Despliegue a Azure App Service'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: DeployJob
+    steps:
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)'
+
+    - task: AzureWebApp@1
+      inputs:
+        azureSubscription: 'ConexionAzureAPI' # El nombre de la conexión que creaste en el Paso 2
+        appType: 'webApp'
+        appName: 'NombreDeTuAppServiceReal' # El nombre exacto de tu App Service en Azure
+        package: '$(System.ArtifactsDirectory)/drop/*.zip'
