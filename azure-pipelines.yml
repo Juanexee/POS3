@@ -54,5 +54,5 @@ stages:
       inputs:
         azureSubscription: 'ConexionAzureAPI' # El nombre de la conexión que creaste en el Paso 2
         appType: 'webApp'
-        appName: 'NombreDeTuAppServiceReal' # El nombre exacto de tu App Service en Azure
+        appName: 'POS320261015135238' # El nombre exacto de tu App Service en Azure
         package: '$(System.ArtifactsDirectory)/drop/*.zip'
