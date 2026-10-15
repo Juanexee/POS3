@@ -52,7 +52,7 @@ stages:
 
     - task: AzureWebApp@1
       inputs:
-        azureSubscription: 'ConexionAzureAPI' # El nombre de la conexión que creaste en el Paso 2
+        azureSubscription: 'ConexionAzureAPI2' # El nombre de la conexión que creaste en el Paso 2
         appType: 'webApp'
         appName: 'POS320261015135238' # El nombre exacto de tu App Service en Azure
         package: '$(System.ArtifactsDirectory)/drop/*.zip'
