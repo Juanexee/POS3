@@ -28,6 +28,15 @@ namespace API_REST_V3
                 throw new InvalidOperationException("La cadena de conexi�n 'RestauranteDB' no est� configurada.");
 
             // -----------------------
+            // Validar la configuración de MongoDB
+            // -----------------------
+            var mongoConnectionString = builder.Configuration["MongoDB:ConnectionString"];
+            var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"];
+
+            if (string.IsNullOrWhiteSpace(mongoConnectionString) || mongoConnectionString == "PENDIENTE")
+                throw new InvalidOperationException("La cadena de conexión de MongoDB no está configurada en appsettings.json.");
+
+            // -----------------------
             // Bindear configuraci�n Jwt a POCO y validarla
             // -----------------------
             builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
@@ -86,11 +95,10 @@ namespace API_REST_V3
             // RF-MOV-DSH-01, RF-MOV-DSH-02: Dashboard y tendencias de ventas
             builder.Services.AddScoped<AnaliticaNegocio>();
 
-            // RF-MOV-AUD-01, RF-MOV-AUD-02: Auditoría y logs en MongoDB
-            var mongoConnectionString = builder.Configuration["MongoDB:ConnectionString"] ?? "PENDIENTE";
-            var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"] ?? "RestauranteAuditoria";
+            // RF-MOV-AUD-01, RF-MOV-AUD-02: Auditoría y logs en MongoDB       
+            
             builder.Services.AddScoped<AuditoriaDatos>(sp =>
-                new AuditoriaDatos(mongoConnectionString, mongoDatabaseName));
+                   new AuditoriaDatos(mongoConnectionString, mongoDatabaseName));
             builder.Services.AddScoped<AuditoriaNegocio>();
 
             // Registrar VentaNegocio con su constructor expl�cito por seguridad de dependencias cruzadas
