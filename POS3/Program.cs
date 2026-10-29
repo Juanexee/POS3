@@ -4,7 +4,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NEGOCIO;
+using POS3.Data.Mongo;
 using POS3.Hubs;
+using POS3.Middleware;
+using POS3.Services;
 
 namespace API_REST_V3
 {
@@ -28,10 +31,18 @@ namespace API_REST_V3
                 throw new InvalidOperationException("La cadena de conexi�n 'RestauranteDB' no est� configurada.");
 
             // -----------------------
-            // Validar la configuración de MongoDB
+            // Validar y registrar la configuración de MongoDB
             // -----------------------
-            var mongoConnectionString = builder.Configuration["MongoDB:ConnectionString"];
-            var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"];
+            builder.Services.Configure<MongoDbSettings>(
+                builder.Configuration.GetSection(MongoDbSettings.SectionName));
+            builder.Services.AddSingleton<MongoMetricsContext>();
+            builder.Services.AddSingleton<IMetricsService, MongoMetricsService>();
+            builder.Services.AddHostedService<MemoryMetricsBackgroundService>();
+
+            var mongoConnectionString = builder.Configuration[$"{MongoDbSettings.SectionName}:ConnectionString"]
+                                        ?? builder.Configuration["MongoDB:ConnectionString"];
+            var mongoDatabaseName = builder.Configuration[$"{MongoDbSettings.SectionName}:DatabaseName"]
+                                    ?? builder.Configuration["MongoDB:DatabaseName"];
 
             if (string.IsNullOrWhiteSpace(mongoConnectionString) || mongoConnectionString == "PENDIENTE")
                 throw new InvalidOperationException("La cadena de conexión de MongoDB no está configurada en appsettings.json.");
@@ -221,6 +232,9 @@ namespace API_REST_V3
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            // Middleware para capturar métricas de uso y tiempos de respuesta de la API en MongoDB
+            app.UseMiddleware<ApiUsageMetricsMiddleware>();
 
             // Mapeo de Hubs y Controladores
             app.MapHub<CocinaHub>("/cocinaHub");
